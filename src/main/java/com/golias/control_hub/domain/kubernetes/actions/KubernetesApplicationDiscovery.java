@@ -31,7 +31,7 @@ public class KubernetesApplicationDiscovery implements KubernetesDiscovery {
 
     public List<DiscoveredApplication> discoverApplications() {
         List<V1Deployment> deployments = getDeployments();
-
+        log.info("Deployments found: {}", deployments);
         return deployments.stream()
                 .map(this::toApplication)
                 .filter(Objects::nonNull)
@@ -65,12 +65,7 @@ public class KubernetesApplicationDiscovery implements KubernetesDiscovery {
 
         try {
             return coreV1Api
-                    .listNamespacedPod(
-                            namespace, null, null, null, null,
-                            labelSelector, null, null, null, null,
-                            null)
-                    .getItems();
-
+                    .listNamespacedPod(namespace).execute().getItems();
         } catch (Exception e) {
             log.error("Failed to retrieve pods for application {} in namespace {}", appName,
                 namespace,
@@ -82,8 +77,7 @@ public class KubernetesApplicationDiscovery implements KubernetesDiscovery {
 
     private List<V1Deployment> getDeployments() {
         try {
-            return appsV1Api.listDeploymentForAllNamespaces(null, null, null, null,
-                    null, null, null, null, null, null).getItems();
+            return appsV1Api.listDeploymentForAllNamespaces().execute().getItems();
         } catch (ApiException e) {
             log.error("Failed to discover Kubernetes deployments", e);
             throw new RuntimeException(e);

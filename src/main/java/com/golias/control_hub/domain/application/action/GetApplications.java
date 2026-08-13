@@ -20,7 +20,7 @@ public class GetApplications {
 
     private final MeterRegistry meterRegistry;
 
-    public GetApplications(ApplicationRepo applicationRepo, Converters converters,MeterRegistry meterRegistry) {
+    public GetApplications(ApplicationRepo applicationRepo, Converters converters, MeterRegistry meterRegistry) {
         this.applicationRepo = applicationRepo;
         this.converters = converters;
         this.meterRegistry = meterRegistry;
