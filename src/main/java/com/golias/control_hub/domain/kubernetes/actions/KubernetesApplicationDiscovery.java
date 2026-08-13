@@ -31,7 +31,6 @@ public class KubernetesApplicationDiscovery implements KubernetesDiscovery {
 
     public List<DiscoveredApplication> discoverApplications() {
         List<V1Deployment> deployments = getDeployments();
-        log.info("Deployments found: {}", deployments);
         return deployments.stream()
                 .map(this::toApplication)
                 .filter(Objects::nonNull)

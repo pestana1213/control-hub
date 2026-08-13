@@ -8,6 +8,6 @@ import org.springframework.stereotype.Component;
 public class Converter implements Converters {
 
     public ApplicationDTO convert(Application application) {
-        return new ApplicationDTO(application.name());
+        return new ApplicationDTO(application.getName());
     }
 }
