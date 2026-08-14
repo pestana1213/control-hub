@@ -19,7 +19,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 25
+          java-version: '25'
 
       - name: Login to GHCR
         uses: docker/login-action@v3
@@ -40,10 +40,29 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
       - name: Update GitOps repo image tag
         run: |
           git clone https://x-access-token:${{ secrets.GITOPS_TOKEN }}@github.com/pestana1213/golias-homelab.git
+
           cd golias-homelab/apps/control-hub
-          sed -i "/ghcr.io\/pestana1213\/control-hub/{n;s/newTag:.*/newTag: ${{ github.sha }}/}" kustomization.yaml
-          git commit -am "Update image to ${{ github.sha }}"
+
+          echo "Before:"
+          cat kustomization.yaml
+
+          sed -i "s/newTag:.*/newTag: ${{ github.sha }}/" kustomization.yaml
+
+          echo "After:"
+          cat kustomization.yaml
+
+          git diff
+
+          git add kustomization.yaml
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m "Update control-hub image to ${{ github.sha }}"
           git push
