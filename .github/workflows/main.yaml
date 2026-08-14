@@ -44,6 +44,6 @@ jobs:
         run: |
           git clone https://x-access-token:${{ secrets.GITOPS_TOKEN }}@github.com/pestana1213/golias-homelab.git
           cd golias-homelab/apps/control-hub
-          sed -i "/ghcr.io\/pestana1213\/manager/{n;s/newTag:.*/newTag: ${{ github.sha }}/}" kustomization.yaml
+          sed -i "/ghcr.io\/pestana1213\/control-hub/{n;s/newTag:.*/newTag: ${{ github.sha }}/}" kustomization.yaml
           git commit -am "Update image to ${{ github.sha }}"
           git push
