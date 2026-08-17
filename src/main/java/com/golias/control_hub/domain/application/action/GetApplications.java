@@ -2,6 +2,7 @@ package com.golias.control_hub.domain.application.action;
 
 import com.golias.control_hub.domain.application.dto.ApplicationDTO;
 import com.golias.control_hub.domain.application.dto.PodDTO;
+import com.golias.control_hub.domain.application.dto.PodStatus;
 import com.golias.control_hub.domain.application.entities.Application;
 import com.golias.control_hub.domain.application.repository.ApplicationRepo;
 import com.golias.control_hub.domain.application.utils.Converters;
@@ -15,6 +16,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+
+import static com.golias.control_hub.domain.application.dto.PodStatus.*;
 
 @Service
 @Slf4j
@@ -57,7 +60,7 @@ public class GetApplications {
                     .toList();
 
             int healthyPods = (int) pods.stream()
-                    .filter(p -> "Healthy".equals(p.status()))
+                    .filter(p -> HEALTHY.equals(p.status()))
                     .count();
 
             int desiredPods = getDesiredReplicas(app.namespace(), app.name());
@@ -97,14 +100,14 @@ public class GetApplications {
         List<V1ContainerStatus> containerStatuses = podStatus != null ? podStatus.getContainerStatuses() : null;
 
         int restarts = 0;
-        String status = "Unknown";
+        PodStatus status = UNKNOWN;
         if (containerStatuses != null && !containerStatuses.isEmpty()) {
             restarts = containerStatuses.stream()
                     .mapToInt(V1ContainerStatus::getRestartCount)
                     .sum();
 
             boolean allReady = containerStatuses.stream().allMatch(V1ContainerStatus::getReady);
-            status = allReady ? "Healthy" : "Unhealthy";
+            status = allReady ? HEALTHY : UNHEALTHY;
         }
 
         return new PodDTO(name, status, phase, restarts);
