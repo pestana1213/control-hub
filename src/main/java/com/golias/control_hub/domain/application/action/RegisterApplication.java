@@ -36,7 +36,6 @@ public class RegisterApplication {
 
         //info: Intentionally with bad performance
         for (DiscoveredApplication discoveredApplication : discoveredApplications) {
-
             Optional<Application> applicationOptional = applicationRepo.
                     findByNameAndNameSpace(discoveredApplication.name(), discoveredApplication.namespace());
 

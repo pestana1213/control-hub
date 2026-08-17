@@ -64,13 +64,37 @@ public class KubernetesApplicationDiscovery implements KubernetesDiscovery {
 
         try {
             return coreV1Api
-                    .listNamespacedPod(namespace).execute().getItems();
+                    .listNamespacedPod(namespace)
+                    .labelSelector(labelSelector)
+                    .execute().getItems();
         } catch (Exception e) {
             log.error("Failed to retrieve pods for application {} in namespace {}", appName,
                 namespace,
                 e);
 
             throw new RuntimeException("Failed to retrieve Kubernetes pods", e);
+        }
+    }
+
+    public V1Deployment getDeployment(String namespace, String app) {
+        String labelSelector = "app.kubernetes.io/name=" + app;
+
+        try {
+            List<V1Deployment> deployments = appsV1Api
+                    .listNamespacedDeployment(namespace)
+                    .labelSelector(labelSelector)
+                    .execute()
+                    .getItems();
+
+            if (deployments.isEmpty()) {
+                log.warn("No deployment found for app {} in namespace {}", app, namespace);
+                return null;
+            }
+
+            return deployments.getFirst();
+        } catch (ApiException e) {
+            log.error("Failed to retrieve deployment for application {} in namespace {}", app, namespace, e);
+            throw new RuntimeException("Failed to retrieve Kubernetes deployment", e);
         }
     }
 
