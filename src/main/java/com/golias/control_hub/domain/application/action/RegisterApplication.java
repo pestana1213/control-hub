@@ -44,17 +44,8 @@ public class RegisterApplication {
 
             if (applicationOptional.isEmpty()) {
                 try {
-                    List<String> ingressUrl = getIngressUrls(
-                            kubernetesDiscovery.
-                                    getIngresses(discoveredApplication.namespace(), discoveredApplication.name()));
-                    String url = null;
-                    if (!ingressUrl.isEmpty()) {
-                        url = ingressUrl.getFirst();
-                    }
-
                     Application application = Application.builder().name(discoveredApplication.name())
                             .namespace(discoveredApplication.namespace())
-                            .ingress(url)
                             .build();
                     meterRegistry.counter("control_hub.application_register").increment();
                     applicationRepo.save(application);

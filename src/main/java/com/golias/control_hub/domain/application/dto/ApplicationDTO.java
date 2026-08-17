@@ -11,9 +11,9 @@ public record ApplicationDTO(
         String description,
         String repositoryUrl,
         String kind,
-        String url,
         int desiredPods,
         int healthyPods,
-        List<PodDTO> pods
+        List<PodDTO> pods,
+        List<IngressDTO> ingresses
 ) {
 }

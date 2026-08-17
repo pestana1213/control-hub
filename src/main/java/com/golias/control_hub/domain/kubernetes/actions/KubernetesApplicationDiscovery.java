@@ -1,5 +1,7 @@
 package com.golias.control_hub.domain.kubernetes.actions;
 
+import com.golias.control_hub.domain.application.dto.ApplicationResources;
+import com.golias.control_hub.domain.application.entities.Application;
 import com.golias.control_hub.domain.kubernetes.dto.DiscoveredApplication;
 import com.golias.control_hub.domain.kubernetes.ports.KubernetesDiscovery;
 import io.kubernetes.client.openapi.ApiClient;
@@ -42,6 +44,11 @@ public class KubernetesApplicationDiscovery implements KubernetesDiscovery {
                 .toList();
     }
 
+    public ApplicationResources hydrateApplication(String namespace, String name) {
+        return ApplicationResources.builder().pods(getPods(namespace, name)).deployment(getDeployment(namespace, name))
+                .ingresses(getIngresses(namespace, name)).build();
+    }
+
     private DiscoveredApplication toApplication(V1Deployment deployment) {
 
         V1ObjectMeta metadata = deployment.getMetadata();
@@ -62,7 +69,7 @@ public class KubernetesApplicationDiscovery implements KubernetesDiscovery {
                 labels.get("app.kubernetes.io/component")
         );
     }
-    public List<V1Pod> getPods(String namespace, String appName) {
+    private List<V1Pod> getPods(String namespace, String appName) {
 
         String labelSelector =
                 "app.kubernetes.io/name=" + appName;
@@ -81,7 +88,7 @@ public class KubernetesApplicationDiscovery implements KubernetesDiscovery {
         }
     }
 
-    public V1Deployment getDeployment(String namespace, String app) {
+    private V1Deployment getDeployment(String namespace, String app) {
         String labelSelector = "app.kubernetes.io/name=" + app;
 
         try {
@@ -103,7 +110,7 @@ public class KubernetesApplicationDiscovery implements KubernetesDiscovery {
         }
     }
 
-    public List<V1Ingress> getIngresses(String namespace, String appName) {
+    private List<V1Ingress> getIngresses(String namespace, String appName) {
         String labelSelector =
                 "app.kubernetes.io/name=" + appName;
         try {

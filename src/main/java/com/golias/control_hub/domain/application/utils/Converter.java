@@ -13,7 +13,6 @@ public class Converter implements Converters {
                 .namespace(application.getNamespace())
                 .description(application.getDescription())
                 .repositoryUrl(application.getRepositoryUrl())
-                .url(application.getIngress())
             .build();
     }
 }
