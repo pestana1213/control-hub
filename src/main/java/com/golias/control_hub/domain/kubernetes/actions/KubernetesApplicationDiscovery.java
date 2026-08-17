@@ -1,7 +1,6 @@
 package com.golias.control_hub.domain.kubernetes.actions;
 
 import com.golias.control_hub.domain.application.dto.ApplicationResources;
-import com.golias.control_hub.domain.application.entities.Application;
 import com.golias.control_hub.domain.kubernetes.dto.DiscoveredApplication;
 import com.golias.control_hub.domain.kubernetes.ports.KubernetesDiscovery;
 import io.kubernetes.client.openapi.ApiClient;
