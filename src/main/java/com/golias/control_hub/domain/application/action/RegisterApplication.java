@@ -32,10 +32,7 @@ public class RegisterApplication {
 
     @Scheduled(fixedDelay = 5000)
     public void registerApplication() {
-        meterRegistry.counter("control_hub.application_register").increment();
-
         List<DiscoveredApplication> discoveredApplications = kubernetesDiscovery.discoverApplications();
-        log.info("Applications discovered: {}", discoveredApplications);
 
         //info: Intentionally with bad performance
         for (DiscoveredApplication discoveredApplication : discoveredApplications) {
@@ -46,6 +43,7 @@ public class RegisterApplication {
             if (applicationOptional.isEmpty()) {
                 Application application = Application.builder().name(discoveredApplication.name())
                         .namespace(discoveredApplication.namespace()).build();
+                meterRegistry.counter("control_hub.application_register").increment();
                 applicationRepo.save(application);
                 log.info("New application saved: {}", application);
             }

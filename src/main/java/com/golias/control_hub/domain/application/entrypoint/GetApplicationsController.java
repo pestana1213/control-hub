@@ -3,11 +3,13 @@ package com.golias.control_hub.domain.application.entrypoint;
 import com.golias.control_hub.domain.application.action.GetApplications;
 import com.golias.control_hub.domain.application.dto.ApplicationDTO;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-@RestController("/v1/applications")
+@RestController
+@RequestMapping("/v1/applications")
 public class GetApplicationsController {
 
     private final GetApplications applications;
