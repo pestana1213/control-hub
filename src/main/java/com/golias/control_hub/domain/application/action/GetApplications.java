@@ -71,6 +71,7 @@ public class GetApplications {
                     app.description(),
                     app.repositoryUrl(),
                     app.kind(),
+                    app.url(),
                     desiredPods,
                     healthyPods,
                     pods

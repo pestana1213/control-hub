@@ -36,6 +36,8 @@ public class Application {
 
         private String argocdApplication;
 
+        private String ingress;
+
         @Column(name = "created_at", updatable = false)
         private ZonedDateTime createdAt;
 

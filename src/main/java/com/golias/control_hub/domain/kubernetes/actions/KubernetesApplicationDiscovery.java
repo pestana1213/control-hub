@@ -6,7 +6,9 @@ import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.apis.AppsV1Api;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
+import io.kubernetes.client.openapi.apis.NetworkingV1Api;
 import io.kubernetes.client.openapi.models.V1Deployment;
+import io.kubernetes.client.openapi.models.V1Ingress;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1Pod;
 import lombok.extern.slf4j.Slf4j;
@@ -24,9 +26,12 @@ public class KubernetesApplicationDiscovery implements KubernetesDiscovery {
 
     private final AppsV1Api appsV1Api;
 
+    private final NetworkingV1Api networkingV1Api;
+
     public KubernetesApplicationDiscovery(ApiClient apiClient) {
         this.coreV1Api = new CoreV1Api(apiClient);
         this.appsV1Api = new AppsV1Api(apiClient);
+        this.networkingV1Api = new NetworkingV1Api(apiClient);
     }
 
     public List<DiscoveredApplication> discoverApplications() {
@@ -95,6 +100,23 @@ public class KubernetesApplicationDiscovery implements KubernetesDiscovery {
         } catch (ApiException e) {
             log.error("Failed to retrieve deployment for application {} in namespace {}", app, namespace, e);
             throw new RuntimeException("Failed to retrieve Kubernetes deployment", e);
+        }
+    }
+
+    public List<V1Ingress> getIngresses(String namespace, String appName) {
+        String labelSelector =
+                "app.kubernetes.io/name=" + appName;
+        try {
+            return networkingV1Api
+                    .listNamespacedIngress(namespace)
+                    .labelSelector(labelSelector)
+                    .execute()
+                    .getItems();
+
+        } catch (Exception e) {
+            log.error("Failed to retrieve ingresses for application {} in namespace {}",
+                    appName, namespace, e);
+            throw new RuntimeException("Failed to retrieve Kubernetes ingresses", e);
         }
     }
 
