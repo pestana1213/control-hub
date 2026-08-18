@@ -13,6 +13,7 @@ import io.kubernetes.client.openapi.models.V1Deployment;
 import io.kubernetes.client.openapi.models.V1Ingress;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1Pod;
+import io.micrometer.core.annotation.Timed;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -36,6 +37,12 @@ public class KubernetesApplicationDiscovery implements KubernetesDiscovery {
         this.networkingV1Api = new NetworkingV1Api(apiClient);
     }
 
+    @Timed(
+            value = "control_hub.kubernetes.discovery",
+            extraTags = {
+                    "resource", "discoverApplications"
+            }
+    )
     public List<DiscoveredApplication> discoverApplications() {
         List<V1Deployment> deployments = getDeployments();
         return deployments.stream()
@@ -69,6 +76,13 @@ public class KubernetesApplicationDiscovery implements KubernetesDiscovery {
                 labels.get("app.kubernetes.io/component")
         );
     }
+
+    @Timed(
+            value = "control_hub.kubernetes.discovery",
+            extraTags = {
+                    "resource", "pods"
+            }
+    )
     private List<V1Pod> getPods(String namespace, String appName) {
 
         String labelSelector =
@@ -85,6 +99,12 @@ public class KubernetesApplicationDiscovery implements KubernetesDiscovery {
         }
     }
 
+    @Timed(
+            value = "control_hub.kubernetes.discovery",
+            extraTags = {
+                    "resource", "deployment"
+            }
+    )
     private V1Deployment getDeployment(String namespace, String app) {
         String labelSelector = "app.kubernetes.io/name=" + app;
 
@@ -107,6 +127,12 @@ public class KubernetesApplicationDiscovery implements KubernetesDiscovery {
         }
     }
 
+    @Timed(
+            value = "control_hub.kubernetes.discovery",
+            extraTags = {
+                    "resource", "ingress"
+            }
+    )
     private List<V1Ingress> getIngresses(String namespace, String appName) {
         String labelSelector =
                 "app.kubernetes.io/name=" + appName;

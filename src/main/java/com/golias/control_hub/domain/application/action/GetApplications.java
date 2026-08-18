@@ -10,6 +10,7 @@ import com.golias.control_hub.domain.application.repository.ApplicationRepo;
 import com.golias.control_hub.domain.application.utils.Converters;
 import com.golias.control_hub.domain.kubernetes.ports.KubernetesDiscovery;
 import io.kubernetes.client.openapi.models.V1Deployment;
+import io.micrometer.core.annotation.Timed;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -38,6 +39,12 @@ public class GetApplications {
         this.kubernetesDiscovery = kubernetesDiscovery;
     }
 
+    @Timed(
+            value = "control_hub.kubernetes.discovery",
+            extraTags = {
+                    "resource", "getRegisteredApplications"
+            }
+    )
     public List<ApplicationDTO> getRegisteredApplications() {
         try {
             List<Application> applications = applicationRepo.findAll();
