@@ -13,6 +13,7 @@ public record ApplicationDTO(
         String kind,
         int desiredPods,
         int healthyPods,
-        List<PodDTO> pods
+        List<PodDTO> pods,
+        List<IngressDTO> ingresses
 ) {
 }

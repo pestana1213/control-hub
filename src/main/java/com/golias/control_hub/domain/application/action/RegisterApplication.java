@@ -19,6 +19,7 @@ public class RegisterApplication {
     private final ApplicationRepo applicationRepo;
     private final MeterRegistry meterRegistry;
     private final KubernetesDiscovery kubernetesDiscovery;
+    private final static String STATUS = "status";
 
     public RegisterApplication(
             ApplicationRepo applicationRepo,
@@ -33,18 +34,24 @@ public class RegisterApplication {
     @Scheduled(fixedDelay = 5000)
     public void registerApplication() {
         List<DiscoveredApplication> discoveredApplications = kubernetesDiscovery.discoverApplications();
-
-        //info: Intentionally with bad performance
         for (DiscoveredApplication discoveredApplication : discoveredApplications) {
             Optional<Application> applicationOptional = applicationRepo.
                     findByNameAndNameSpace(discoveredApplication.name(), discoveredApplication.namespace());
 
             if (applicationOptional.isEmpty()) {
-                Application application = Application.builder().name(discoveredApplication.name())
-                        .namespace(discoveredApplication.namespace()).build();
-                meterRegistry.counter("control_hub.application_register").increment();
-                applicationRepo.save(application);
-                log.info("New application saved: {}", application);
+                try {
+                    Application application = Application.builder().name(discoveredApplication.name())
+                            .namespace(discoveredApplication.namespace())
+                            .build();
+                    applicationRepo.save(application);
+                    meterRegistry.counter("control_hub.application_register", STATUS, "success").increment();
+                    log.info("New application saved: {}", application);
+                }
+                catch (Exception e) {
+                    meterRegistry.counter("control_hub.application_register", STATUS, "failure").increment();
+                    log.error("Error saving new application", e);
+                }
+
             }
         }
     }

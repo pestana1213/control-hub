@@ -1,12 +1,16 @@
 package com.golias.control_hub.domain.kubernetes.actions;
 
+import com.golias.control_hub.domain.application.dto.ApplicationResources;
 import com.golias.control_hub.domain.kubernetes.dto.DiscoveredApplication;
+import com.golias.control_hub.domain.kubernetes.exceptions.KubernetesException;
 import com.golias.control_hub.domain.kubernetes.ports.KubernetesDiscovery;
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.apis.AppsV1Api;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
+import io.kubernetes.client.openapi.apis.NetworkingV1Api;
 import io.kubernetes.client.openapi.models.V1Deployment;
+import io.kubernetes.client.openapi.models.V1Ingress;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1Pod;
 import lombok.extern.slf4j.Slf4j;
@@ -24,9 +28,12 @@ public class KubernetesApplicationDiscovery implements KubernetesDiscovery {
 
     private final AppsV1Api appsV1Api;
 
+    private final NetworkingV1Api networkingV1Api;
+
     public KubernetesApplicationDiscovery(ApiClient apiClient) {
         this.coreV1Api = new CoreV1Api(apiClient);
         this.appsV1Api = new AppsV1Api(apiClient);
+        this.networkingV1Api = new NetworkingV1Api(apiClient);
     }
 
     public List<DiscoveredApplication> discoverApplications() {
@@ -35,6 +42,11 @@ public class KubernetesApplicationDiscovery implements KubernetesDiscovery {
                 .map(this::toApplication)
                 .filter(Objects::nonNull)
                 .toList();
+    }
+
+    public ApplicationResources hydrateApplication(String namespace, String name) {
+        return ApplicationResources.builder().pods(getPods(namespace, name)).deployment(getDeployment(namespace, name))
+                .ingresses(getIngresses(namespace, name)).build();
     }
 
     private DiscoveredApplication toApplication(V1Deployment deployment) {
@@ -57,7 +69,7 @@ public class KubernetesApplicationDiscovery implements KubernetesDiscovery {
                 labels.get("app.kubernetes.io/component")
         );
     }
-    public List<V1Pod> getPods(String namespace, String appName) {
+    private List<V1Pod> getPods(String namespace, String appName) {
 
         String labelSelector =
                 "app.kubernetes.io/name=" + appName;
@@ -68,15 +80,12 @@ public class KubernetesApplicationDiscovery implements KubernetesDiscovery {
                     .labelSelector(labelSelector)
                     .execute().getItems();
         } catch (Exception e) {
-            log.error("Failed to retrieve pods for application {} in namespace {}", appName,
-                namespace,
-                e);
-
-            throw new RuntimeException("Failed to retrieve Kubernetes pods", e);
+            log.error("Failed to retrieve pods for application {} in namespace {}", appName, namespace, e);
+            throw new KubernetesException("Failed to retrieve Kubernetes pods", e);
         }
     }
 
-    public V1Deployment getDeployment(String namespace, String app) {
+    private V1Deployment getDeployment(String namespace, String app) {
         String labelSelector = "app.kubernetes.io/name=" + app;
 
         try {
@@ -94,7 +103,23 @@ public class KubernetesApplicationDiscovery implements KubernetesDiscovery {
             return deployments.getFirst();
         } catch (ApiException e) {
             log.error("Failed to retrieve deployment for application {} in namespace {}", app, namespace, e);
-            throw new RuntimeException("Failed to retrieve Kubernetes deployment", e);
+            throw new KubernetesException("Failed to retrieve Kubernetes deployment", e);
+        }
+    }
+
+    private List<V1Ingress> getIngresses(String namespace, String appName) {
+        String labelSelector =
+                "app.kubernetes.io/name=" + appName;
+        try {
+            return networkingV1Api
+                    .listNamespacedIngress(namespace)
+                    .labelSelector(labelSelector)
+                    .execute()
+                    .getItems();
+
+        } catch (Exception e) {
+            log.error("Failed to retrieve ingresses for application {} in namespace {}", appName, namespace, e);
+            throw new KubernetesException("Failed to retrieve Kubernetes ingresses", e);
         }
     }
 
@@ -103,7 +128,7 @@ public class KubernetesApplicationDiscovery implements KubernetesDiscovery {
             return appsV1Api.listDeploymentForAllNamespaces().execute().getItems();
         } catch (ApiException e) {
             log.error("Failed to discover Kubernetes deployments", e);
-            throw new RuntimeException(e);
+            throw new KubernetesException("Failed to discover Kubernetes deployments" ,e);
         }
     }
 }
