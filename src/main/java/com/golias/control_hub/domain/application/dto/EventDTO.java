@@ -10,6 +10,8 @@ public record EventDTO(
         OffsetDateTime firstTimestamp,
         OffsetDateTime lastTimestamp,
         String involvedObjectKind,
-        String involvedObjectName
+        String involvedObjectName,
+        String sourceComponent,
+        String sourceHost
 ) {
 }

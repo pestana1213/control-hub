@@ -197,7 +197,10 @@ public class KubernetesApplicationDiscovery implements KubernetesDiscovery {
 
         try {
             return coreV1Api.listNamespacedEvent(namespace).execute().getItems().stream()
-                    .filter(event -> resourceNames.contains(event.getInvolvedObject().getName()))
+                    .filter(event -> event.getInvolvedObject().getName() != null)
+                    .filter(event -> resourceNames.contains(
+                            event.getInvolvedObject().getName()
+                    ))
                     .toList();
         } catch (ApiException e) {
             log.error("Failed to retrieve events in namespace {}", namespace, e);

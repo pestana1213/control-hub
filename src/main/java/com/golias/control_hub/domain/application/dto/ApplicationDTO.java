@@ -10,7 +10,6 @@ public record ApplicationDTO(
         String namespace,
         String description,
         String repositoryUrl,
-        String kind,
         int desiredPods,
         int healthyPods,
         List<PodDTO> pods,

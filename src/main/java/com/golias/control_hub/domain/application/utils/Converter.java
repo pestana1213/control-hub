@@ -82,8 +82,34 @@ public class Converter implements Converters {
                 event.getCount(),
                 event.getFirstTimestamp(),
                 event.getLastTimestamp(),
-                involvedObject != null ? involvedObject.getKind() : null,
-                involvedObject != null ? involvedObject.getName() : null
+                involvedObject.getKind(),
+                involvedObject.getName(),
+                getSourceComponent(event),
+                getSourceHost(event)
         );
+    }
+
+    private String getSourceComponent(CoreV1Event event) {
+        if (event.getReportingComponent() != null) {
+            return event.getReportingComponent();
+        }
+
+        if (event.getSource() != null) {
+            return event.getSource().getComponent();
+        }
+
+        return null;
+    }
+
+    private String getSourceHost(CoreV1Event event) {
+        if (event.getReportingInstance() != null) {
+            return event.getReportingInstance();
+        }
+
+        if (event.getSource() != null) {
+            return event.getSource().getHost();
+        }
+
+        return null;
     }
 }
