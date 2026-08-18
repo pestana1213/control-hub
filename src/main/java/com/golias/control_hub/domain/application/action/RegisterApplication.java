@@ -4,6 +4,7 @@ import com.golias.control_hub.domain.application.entities.Application;
 import com.golias.control_hub.domain.application.repository.ApplicationRepo;
 import com.golias.control_hub.domain.kubernetes.dto.DiscoveredApplication;
 import com.golias.control_hub.domain.kubernetes.ports.KubernetesDiscovery;
+import io.micrometer.core.annotation.Timed;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -31,6 +32,12 @@ public class RegisterApplication {
         this.kubernetesDiscovery = kubernetesDiscovery;
     }
 
+    @Timed(
+            value = "control_hub.kubernetes.discovery",
+            extraTags = {
+                    "resource", "registerApplication"
+            }
+    )
     @Scheduled(fixedDelay = 5000)
     public void registerApplication() {
         List<DiscoveredApplication> discoveredApplications = kubernetesDiscovery.discoverApplications();
