@@ -14,6 +14,7 @@ public record ApplicationDTO(
         int desiredPods,
         int healthyPods,
         List<PodDTO> pods,
-        List<IngressDTO> ingresses
+        List<IngressDTO> ingresses,
+        List<EventDTO> events
 ) {
 }

@@ -1,6 +1,7 @@
 package com.golias.control_hub.domain.application.utils;
 
 import com.golias.control_hub.domain.application.dto.ApplicationDTO;
+import com.golias.control_hub.domain.application.dto.EventDTO;
 import com.golias.control_hub.domain.application.dto.IngressDTO;
 import com.golias.control_hub.domain.application.dto.PodDTO;
 import com.golias.control_hub.domain.application.dto.PodStatus;
@@ -69,5 +70,20 @@ public class Converter implements Converters {
                 .toList();
 
         return new IngressDTO(name, urls);
+    }
+
+    public EventDTO toEventDTO(CoreV1Event event) {
+        V1ObjectReference involvedObject = event.getInvolvedObject();
+
+        return new EventDTO(
+                event.getType(),
+                event.getReason(),
+                event.getMessage(),
+                event.getCount(),
+                event.getFirstTimestamp(),
+                event.getLastTimestamp(),
+                involvedObject != null ? involvedObject.getKind() : null,
+                involvedObject != null ? involvedObject.getName() : null
+        );
     }
 }

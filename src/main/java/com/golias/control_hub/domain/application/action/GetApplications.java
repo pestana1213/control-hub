@@ -4,6 +4,7 @@ import com.golias.control_hub.domain.application.dto.ApplicationDTO;
 import com.golias.control_hub.domain.application.dto.PodDTO;
 import com.golias.control_hub.domain.application.dto.ApplicationResources;
 import com.golias.control_hub.domain.application.dto.IngressDTO;
+import com.golias.control_hub.domain.application.dto.EventDTO;
 import com.golias.control_hub.domain.application.entities.Application;
 import com.golias.control_hub.domain.application.exceptions.ApplicationException;
 import com.golias.control_hub.domain.application.repository.ApplicationRepo;
@@ -64,6 +65,7 @@ public class GetApplications {
             ApplicationResources resources = kubernetesDiscovery.hydrateApplication(app.namespace(), app.name());
             List<PodDTO> pods = resources.pods().stream().map(converters::toPodDTO).toList();
             List<IngressDTO> ingressDTOS = resources.ingresses().stream().map(converters::toIngressDTO).toList();
+            List<EventDTO> events = resources.events().stream().map(converters::toEventDTO).toList();
             int healthyPods = (int) pods.stream()
                     .filter(p -> HEALTHY.equals(p.status()))
                     .count();
@@ -79,7 +81,8 @@ public class GetApplications {
                     desiredPods,
                     healthyPods,
                     pods,
-                    ingressDTOS
+                    ingressDTOS,
+                    events
             );
         } catch (Exception e) {
             meterRegistry.counter("control-hub.failure", "method", "enrichWithK8sInfo",
