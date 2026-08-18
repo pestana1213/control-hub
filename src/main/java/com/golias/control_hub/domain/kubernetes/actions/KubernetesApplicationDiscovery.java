@@ -2,6 +2,7 @@ package com.golias.control_hub.domain.kubernetes.actions;
 
 import com.golias.control_hub.domain.application.dto.ApplicationResources;
 import com.golias.control_hub.domain.kubernetes.dto.DiscoveredApplication;
+import com.golias.control_hub.domain.kubernetes.exceptions.KubernetesException;
 import com.golias.control_hub.domain.kubernetes.ports.KubernetesDiscovery;
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.ApiException;
@@ -79,11 +80,8 @@ public class KubernetesApplicationDiscovery implements KubernetesDiscovery {
                     .labelSelector(labelSelector)
                     .execute().getItems();
         } catch (Exception e) {
-            log.error("Failed to retrieve pods for application {} in namespace {}", appName,
-                namespace,
-                e);
-
-            throw new RuntimeException("Failed to retrieve Kubernetes pods", e);
+            log.error("Failed to retrieve pods for application {} in namespace {}", appName, namespace, e);
+            throw new KubernetesException("Failed to retrieve Kubernetes pods", e);
         }
     }
 
@@ -105,7 +103,7 @@ public class KubernetesApplicationDiscovery implements KubernetesDiscovery {
             return deployments.getFirst();
         } catch (ApiException e) {
             log.error("Failed to retrieve deployment for application {} in namespace {}", app, namespace, e);
-            throw new RuntimeException("Failed to retrieve Kubernetes deployment", e);
+            throw new KubernetesException("Failed to retrieve Kubernetes deployment", e);
         }
     }
 
@@ -120,9 +118,8 @@ public class KubernetesApplicationDiscovery implements KubernetesDiscovery {
                     .getItems();
 
         } catch (Exception e) {
-            log.error("Failed to retrieve ingresses for application {} in namespace {}",
-                    appName, namespace, e);
-            throw new RuntimeException("Failed to retrieve Kubernetes ingresses", e);
+            log.error("Failed to retrieve ingresses for application {} in namespace {}", appName, namespace, e);
+            throw new KubernetesException("Failed to retrieve Kubernetes ingresses", e);
         }
     }
 
@@ -131,7 +128,7 @@ public class KubernetesApplicationDiscovery implements KubernetesDiscovery {
             return appsV1Api.listDeploymentForAllNamespaces().execute().getItems();
         } catch (ApiException e) {
             log.error("Failed to discover Kubernetes deployments", e);
-            throw new RuntimeException(e);
+            throw new KubernetesException("Failed to discover Kubernetes deployments" ,e);
         }
     }
 }
