@@ -22,4 +22,5 @@ public class GetApplicationsController {
     public List<ApplicationDTO> getAllApplications() {
         return applications.getRegisteredApplications();
     }
+
 }

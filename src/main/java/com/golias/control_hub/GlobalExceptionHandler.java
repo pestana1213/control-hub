@@ -20,8 +20,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(KubernetesException.class)
-    public ProblemDetail handleKubernetesException(
-            KubernetesException exception) {
+    public ProblemDetail handleKubernetesException(KubernetesException exception) {
 
         log.error("Kubernetes operation failed", exception);
 
@@ -36,8 +35,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(ApplicationException.class)
-    public ProblemDetail handleApplicationException(
-            ApplicationException exception) {
+    public ProblemDetail handleApplicationException(ApplicationException exception) {
 
         log.error("Application operation failed", exception);
 

@@ -22,39 +22,29 @@ public class RegisterApplication {
     private final KubernetesDiscovery kubernetesDiscovery;
     private final static String STATUS = "status";
 
-    public RegisterApplication(
-            ApplicationRepo applicationRepo,
-            MeterRegistry meterRegistry,
-            KubernetesDiscovery kubernetesDiscovery
-    ) {
+    public RegisterApplication(ApplicationRepo applicationRepo, MeterRegistry meterRegistry,
+            KubernetesDiscovery kubernetesDiscovery) {
         this.applicationRepo = applicationRepo;
         this.meterRegistry = meterRegistry;
         this.kubernetesDiscovery = kubernetesDiscovery;
     }
 
-    @Timed(
-            value = "control_hub.kubernetes.discovery",
-            extraTags = {
-                    "resource", "registerApplication"
-            }
-    )
+    @Timed(value = "control_hub.kubernetes.discovery", extraTags = { "resource", "registerApplication" })
     @Scheduled(fixedDelay = 5000)
     public void registerApplication() {
         List<DiscoveredApplication> discoveredApplications = kubernetesDiscovery.discoverApplications();
         for (DiscoveredApplication discoveredApplication : discoveredApplications) {
-            Optional<Application> applicationOptional = applicationRepo.
-                    findByNameAndNameSpace(discoveredApplication.name(), discoveredApplication.namespace());
+            Optional<Application> applicationOptional = applicationRepo
+                    .findByNameAndNameSpace(discoveredApplication.name(), discoveredApplication.namespace());
 
             if (applicationOptional.isEmpty()) {
                 try {
                     Application application = Application.builder().name(discoveredApplication.name())
-                            .namespace(discoveredApplication.namespace())
-                            .build();
+                            .namespace(discoveredApplication.namespace()).build();
                     applicationRepo.save(application);
                     meterRegistry.counter("control_hub.application_register", STATUS, "success").increment();
                     log.info("New application saved: {}", application);
-                }
-                catch (Exception e) {
+                } catch (Exception e) {
                     meterRegistry.counter("control_hub.application_register", STATUS, "failure").increment();
                     log.error("Error saving new application", e);
                 }
