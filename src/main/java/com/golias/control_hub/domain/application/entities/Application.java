@@ -23,40 +23,40 @@ import java.util.UUID;
 @Builder(toBuilder = true)
 public class Application {
 
-        @Id
-        private UUID id;
+    @Id
+    private UUID id;
 
-        private String name;
+    private String name;
 
-        private String namespace;
+    private String namespace;
 
-        private String description;
+    private String description;
 
-        private String repositoryUrl;
+    private String repositoryUrl;
 
-        private String argocdApplication;
+    private String argocdApplication;
 
-        @Column(name = "created_at", updatable = false)
-        private ZonedDateTime createdAt;
+    @Column(name = "created_at", updatable = false)
+    private ZonedDateTime createdAt;
 
-        @Column(name = "updated_at")
-        private ZonedDateTime updatedAt;
+    @Column(name = "updated_at")
+    private ZonedDateTime updatedAt;
 
-        @PrePersist
-        public void prePersist() {
-                if (this.id == null) {
-                        this.id = generateId(this.name, this.namespace);
-                }
-                this.createdAt = ZonedDateTime.now();
-                this.updatedAt = this.createdAt;
+    @PrePersist
+    public void prePersist() {
+        if (this.id == null) {
+            this.id = generateId(this.name, this.namespace);
         }
+        this.createdAt = ZonedDateTime.now();
+        this.updatedAt = this.createdAt;
+    }
 
-        @PreUpdate
-        public void preUpdate() {
-                this.updatedAt = ZonedDateTime.now();
-        }
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = ZonedDateTime.now();
+    }
 
-        private static UUID generateId(String name, String namespace) {
-                return UUID.nameUUIDFromBytes((namespace + ":" + name).getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        }
+    private static UUID generateId(String name, String namespace) {
+        return UUID.nameUUIDFromBytes((namespace + ":" + name).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
 }

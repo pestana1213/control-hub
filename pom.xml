@@ -90,12 +90,6 @@
 			<artifactId>spring-boot-starter-aspectj</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>net.revelc.code.formatter</groupId>
-			<artifactId>formatter-maven-plugin</artifactId>
-			<version>2.29.0</version>
-			<scope>compile</scope>
-		</dependency>
-		<dependency>
 			<groupId>io.kubernetes</groupId>
 			<artifactId>client-java</artifactId>
 			<version>21.0.1</version>
@@ -110,6 +104,23 @@
 
 	<build>
 		<plugins>
+			<plugin>
+				<groupId>net.revelc.code.formatter</groupId>
+				<artifactId>formatter-maven-plugin</artifactId>
+				<version>2.29.0</version>
+				<configuration>
+					<lineEnding>LF</lineEnding>
+				</configuration>
+				<executions>
+					<execution>
+						<id>validate-format</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>validate</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>

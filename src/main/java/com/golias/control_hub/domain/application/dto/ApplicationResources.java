@@ -10,11 +10,6 @@ import lombok.Builder;
 import java.util.List;
 
 @Builder(toBuilder = true)
-public record ApplicationResources(
-        List<V1Pod> pods,
-        V1Deployment deployment,
-        List<V1Service> services,
-        List<V1Ingress> ingresses,
-        List<CoreV1Event> events
-) {
+public record ApplicationResources(List<V1Pod> pods, V1Deployment deployment, List<V1Service> services,
+        List<V1Ingress> ingresses, List<CoreV1Event> events) {
 }

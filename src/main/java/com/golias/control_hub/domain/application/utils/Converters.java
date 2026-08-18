@@ -9,9 +9,12 @@ import io.kubernetes.client.openapi.models.V1Ingress;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.CoreV1Event;
 
-public interface Converters{
+public interface Converters {
     ApplicationDTO convert(Application application);
+
     IngressDTO toIngressDTO(V1Ingress ingress);
+
     PodDTO toPodDTO(V1Pod pod);
+
     EventDTO toEventDTO(CoreV1Event event);
 }

@@ -33,26 +33,18 @@ public class GetApplications {
     private final MeterRegistry meterRegistry;
 
     public GetApplications(ApplicationRepo applicationRepo, Converters converters,
-                           KubernetesDiscovery kubernetesDiscovery, MeterRegistry meterRegistry) {
+            KubernetesDiscovery kubernetesDiscovery, MeterRegistry meterRegistry) {
         this.applicationRepo = applicationRepo;
         this.converters = converters;
         this.meterRegistry = meterRegistry;
         this.kubernetesDiscovery = kubernetesDiscovery;
     }
 
-    @Timed(
-            value = "control_hub.kubernetes.discovery",
-            extraTags = {
-                    "resource", "getRegisteredApplications"
-            }
-    )
+    @Timed(value = "control_hub.kubernetes.discovery", extraTags = { "resource", "getRegisteredApplications" })
     public List<ApplicationDTO> getRegisteredApplications() {
         try {
             List<Application> applications = applicationRepo.findAll();
-            return applications.stream()
-                    .map(converters::convert)
-                    .map(this::enrichWithK8sInfo)
-                    .toList();
+            return applications.stream().map(converters::convert).map(this::enrichWithK8sInfo).toList();
         } catch (Exception e) {
             meterRegistry.counter("control-hub.failure", "method", "getRegisteredApplications").increment();
             log.error("Error getting all applications", e);
@@ -66,26 +58,14 @@ public class GetApplications {
             List<PodDTO> pods = resources.pods().stream().map(converters::toPodDTO).toList();
             List<IngressDTO> ingressDTOS = resources.ingresses().stream().map(converters::toIngressDTO).toList();
             List<EventDTO> events = resources.events().stream().map(converters::toEventDTO).toList();
-            int healthyPods = (int) pods.stream()
-                    .filter(p -> HEALTHY.equals(p.status()))
-                    .count();
+            int healthyPods = (int) pods.stream().filter(p -> HEALTHY.equals(p.status())).count();
 
             int desiredPods = getDesiredReplicas(resources.deployment());
 
-            return new ApplicationDTO(
-                    app.name(),
-                    app.namespace(),
-                    app.description(),
-                    app.repositoryUrl(),
-                    desiredPods,
-                    healthyPods,
-                    pods,
-                    ingressDTOS,
-                    events
-            );
+            return new ApplicationDTO(app.name(), app.namespace(), app.description(), app.repositoryUrl(), desiredPods,
+                    healthyPods, pods, ingressDTOS, events);
         } catch (Exception e) {
-            meterRegistry.counter("control-hub.failure", "method", "enrichWithK8sInfo",
-                    "app", app.name()).increment();
+            meterRegistry.counter("control-hub.failure", "method", "enrichWithK8sInfo", "app", app.name()).increment();
             log.error("Error fetching k8s info for app {} in namespace {}", app.name(), app.namespace(), e);
             throw new ApplicationException("Failed to enrich with kubernetes info", e);
         }

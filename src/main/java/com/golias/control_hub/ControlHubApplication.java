@@ -8,8 +8,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 public class ControlHubApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(ControlHubApplication.class, args);
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(ControlHubApplication.class, args);
+    }
 
 }
