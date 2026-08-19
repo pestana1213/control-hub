@@ -5,6 +5,7 @@ import com.golias.control_hub.domain.application.repository.ApplicationRepo;
 import com.golias.control_hub.domain.kubernetes.dto.DiscoveredApplication;
 import com.golias.control_hub.domain.kubernetes.ports.KubernetesDiscovery;
 import io.micrometer.core.annotation.Timed;
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -18,15 +19,17 @@ import java.util.Optional;
 public class RegisterApplication {
 
     private final ApplicationRepo applicationRepo;
-    private final MeterRegistry meterRegistry;
     private final KubernetesDiscovery kubernetesDiscovery;
+    private final Counter successfulRegistrations;
+    private final Counter failedRegistrations;
     private final static String STATUS = "status";
 
     public RegisterApplication(ApplicationRepo applicationRepo, MeterRegistry meterRegistry,
             KubernetesDiscovery kubernetesDiscovery) {
         this.applicationRepo = applicationRepo;
-        this.meterRegistry = meterRegistry;
         this.kubernetesDiscovery = kubernetesDiscovery;
+        this.successfulRegistrations = meterRegistry.counter("control_hub.application_register", STATUS, "success");
+        this.failedRegistrations = meterRegistry.counter("control_hub.application_register", STATUS, "failure");
     }
 
     @Timed(value = "control_hub.kubernetes.discovery", extraTags = { "resource", "registerApplication" })
@@ -42,10 +45,10 @@ public class RegisterApplication {
                     Application application = Application.builder().name(discoveredApplication.name())
                             .namespace(discoveredApplication.namespace()).build();
                     applicationRepo.save(application);
-                    meterRegistry.counter("control_hub.application_register", STATUS, "success").increment();
+                    successfulRegistrations.increment();
                     log.info("New application saved: {}", application);
                 } catch (Exception e) {
-                    meterRegistry.counter("control_hub.application_register", STATUS, "failure").increment();
+                    failedRegistrations.increment();
                     log.error("Error saving new application", e);
                 }
 
