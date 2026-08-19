@@ -2,6 +2,7 @@ package com.golias.control_hub;
 
 import com.golias.control_hub.domain.application.exceptions.ApplicationException;
 import com.golias.control_hub.domain.kubernetes.exceptions.KubernetesException;
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -13,10 +14,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @Slf4j
 public class GlobalExceptionHandler {
 
-    private final MeterRegistry meterRegistry;
+    private final Counter kubernetesExceptions;
+    private final Counter applicationExceptions;
 
     public GlobalExceptionHandler(MeterRegistry meterRegistry) {
-        this.meterRegistry = meterRegistry;
+        this.kubernetesExceptions = meterRegistry.counter("control_hub.exceptions", "type", "kubernetes");
+        this.applicationExceptions = meterRegistry.counter("control_hub.exceptions", "type", "application");
     }
 
     @ExceptionHandler(KubernetesException.class)
@@ -24,7 +27,7 @@ public class GlobalExceptionHandler {
 
         log.error("Kubernetes operation failed", exception);
 
-        meterRegistry.counter("control_hub.exceptions", "type", "kubernetes").increment();
+        kubernetesExceptions.increment();
 
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.SERVICE_UNAVAILABLE);
 
@@ -39,7 +42,7 @@ public class GlobalExceptionHandler {
 
         log.error("Application operation failed", exception);
 
-        meterRegistry.counter("control_hub.exceptions", "type", "application").increment();
+        applicationExceptions.increment();
 
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.INTERNAL_SERVER_ERROR);
 

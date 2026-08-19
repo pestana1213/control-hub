@@ -12,6 +12,7 @@ import com.golias.control_hub.domain.application.utils.Converters;
 import com.golias.control_hub.domain.kubernetes.ports.KubernetesDiscovery;
 import io.kubernetes.client.openapi.models.V1Deployment;
 import io.micrometer.core.annotation.Timed;
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,14 +31,18 @@ public class GetApplications {
 
     private final KubernetesDiscovery kubernetesDiscovery;
 
-    private final MeterRegistry meterRegistry;
+    private final Counter getRegisteredApplicationsFailures;
+
+    private final Counter enrichWithK8sInfoFailures;
 
     public GetApplications(ApplicationRepo applicationRepo, Converters converters,
             KubernetesDiscovery kubernetesDiscovery, MeterRegistry meterRegistry) {
         this.applicationRepo = applicationRepo;
         this.converters = converters;
-        this.meterRegistry = meterRegistry;
         this.kubernetesDiscovery = kubernetesDiscovery;
+        this.getRegisteredApplicationsFailures = meterRegistry.counter("control_hub.failure", "method",
+                "getRegisteredApplications");
+        this.enrichWithK8sInfoFailures = meterRegistry.counter("control_hub.failure", "method", "enrichWithK8sInfo");
     }
 
     @Timed(value = "control_hub.kubernetes.discovery", extraTags = { "resource", "getRegisteredApplications" })
@@ -46,7 +51,7 @@ public class GetApplications {
             List<Application> applications = applicationRepo.findAll();
             return applications.stream().map(converters::convert).map(this::enrichWithK8sInfo).toList();
         } catch (Exception e) {
-            meterRegistry.counter("control-hub.failure", "method", "getRegisteredApplications").increment();
+            getRegisteredApplicationsFailures.increment();
             log.error("Error getting all applications", e);
             throw new ApplicationException("Failed to get registered applications", e);
         }
@@ -65,7 +70,7 @@ public class GetApplications {
             return new ApplicationDTO(app.name(), app.namespace(), app.description(), app.repositoryUrl(), desiredPods,
                     healthyPods, pods, ingressDTOS, events);
         } catch (Exception e) {
-            meterRegistry.counter("control-hub.failure", "method", "enrichWithK8sInfo", "app", app.name()).increment();
+            enrichWithK8sInfoFailures.increment();
             log.error("Error fetching k8s info for app {} in namespace {}", app.name(), app.namespace(), e);
             throw new ApplicationException("Failed to enrich with kubernetes info", e);
         }
