@@ -50,7 +50,7 @@ jobs:
           echo "Before:"
           cat kustomization.yaml
 
-          sed -i "s/newTag:.*/newTag: ${{ github.sha }}/" kustomization.yaml
+          sed -i "/name: ghcr.io\/pestana1213\/control-hub$/,/newTag:/ s/newTag:.*/newTag: ${{ github.sha }}/" kustomization.yaml
 
           echo "After:"
           cat kustomization.yaml
