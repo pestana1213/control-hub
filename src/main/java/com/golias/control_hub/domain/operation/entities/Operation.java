@@ -2,6 +2,8 @@ package com.golias.control_hub.domain.operation.entities;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
@@ -30,10 +32,12 @@ public class Operation {
     private UUID applicationId;
 
     @Column(nullable = false)
-    private String type;
+    @Enumerated(EnumType.STRING)
+    private OperationType type;
 
     @Column(nullable = false)
-    private String status;
+    @Enumerated(EnumType.STRING)
+    private OperationStatus status;
 
     @Column(name = "requested_at", nullable = false)
     private ZonedDateTime requestedAt;
