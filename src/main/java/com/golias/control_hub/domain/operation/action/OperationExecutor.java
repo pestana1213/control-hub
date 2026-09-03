@@ -13,8 +13,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.ZonedDateTime;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
-import java.util.function.Consumer;
 
 @Service
 @Slf4j
@@ -25,23 +27,28 @@ public class OperationExecutor {
     private final ApplicationPort applicationPort;
     private final OperationRepository operationRepository;
     private final MeterRegistry meterRegistry;
+    private final Map<OperationType, OperationHandler> handlers;
 
     public OperationExecutor(ApplicationPort applicationPort, OperationRepository operationRepository,
-            MeterRegistry meterRegistry) {
+            MeterRegistry meterRegistry, List<OperationHandler> handlers) {
         this.applicationPort = applicationPort;
         this.operationRepository = operationRepository;
         this.meterRegistry = meterRegistry;
+        this.handlers = indexHandlers(handlers);
     }
 
-    public void execute(String namespace, String name, OperationType type, Consumer<Application> action) {
+    public Operation executeOperation(String namespace, String applicationName, OperationType type) {
         Objects.requireNonNull(type, "type must not be null");
-        Objects.requireNonNull(action, "action must not be null");
+        return execute(namespace, applicationName, handlers.get(type));
+    }
 
+    private Operation execute(String namespace, String applicationName, OperationHandler handler) {
+        OperationType type = handler.type();
         Timer.Sample sample = Timer.start(meterRegistry);
         Operation operation = null;
 
         try {
-            Application application = applicationPort.findApplication(namespace, name);
+            Application application = applicationPort.findApplication(namespace, applicationName);
             ZonedDateTime startedAt = ZonedDateTime.now();
 
             operation = operationRepository.save(Operation.builder()
@@ -52,23 +59,19 @@ public class OperationExecutor {
                     .startedAt(startedAt)
                     .build());
 
-            log.info("Starting {} operation {} for application {} in namespace {}", type, operation.getId(), name,
-                    namespace);
-            action.accept(application);
+            handler.execute(application);
 
-            operationRepository.save(operation.toBuilder()
+            Operation completedOperation = operationRepository.save(operation.toBuilder()
                     .completedAt(ZonedDateTime.now())
                     .status(OperationStatus.COMPLETED)
                     .build());
+
             counter(type, "success").increment();
-            log.info("Completed {} operation {} for application {} in namespace {}", type, operation.getId(), name,
-                    namespace);
-        } catch (RuntimeException e) {
+            return completedOperation;
+        } catch (RuntimeException exception) {
             counter(type, "failure").increment();
-            markAsFailed(operation, e);
-            log.error("{} operation failed for application {} in namespace {}{}", type, name, namespace,
-                    operation == null ? "" : " (operation " + operation.getId() + ")", e);
-            throw e;
+            markAsFailed(operation, exception);
+            throw exception;
         } finally {
             sample.stop(timer(type));
         }
@@ -108,5 +111,24 @@ public class OperationExecutor {
 
     private static String metricTag(OperationType type) {
         return type.name().toLowerCase();
+    }
+
+    private static Map<OperationType, OperationHandler> indexHandlers(List<OperationHandler> handlers) {
+        EnumMap<OperationType, OperationHandler> indexedHandlers = new EnumMap<>(OperationType.class);
+
+        for (OperationHandler handler : handlers) {
+            OperationHandler duplicate = indexedHandlers.put(handler.type(), handler);
+            if (duplicate != null) {
+                throw new IllegalStateException("Multiple handlers registered for operation type " + handler.type());
+            }
+        }
+
+        for (OperationType type : OperationType.values()) {
+            if (!indexedHandlers.containsKey(type)) {
+                throw new IllegalStateException("No handler registered for operation type " + type);
+            }
+        }
+
+        return Map.copyOf(indexedHandlers);
     }
 }
