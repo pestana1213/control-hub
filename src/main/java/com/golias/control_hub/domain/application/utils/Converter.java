@@ -1,6 +1,7 @@
 package com.golias.control_hub.domain.application.utils;
 
 import com.golias.control_hub.domain.application.dto.ApplicationDTO;
+import com.golias.control_hub.domain.application.action.ApplicationStatusService;
 import com.golias.control_hub.domain.application.dto.EventDTO;
 import com.golias.control_hub.domain.application.dto.IngressDTO;
 import com.golias.control_hub.domain.application.dto.PodDTO;
@@ -12,10 +13,14 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Objects;
 
-import static com.golias.control_hub.domain.application.dto.PodStatus.*;
-
 @Component
 public class Converter implements Converters {
+
+    private final ApplicationStatusService statusService;
+
+    public Converter(ApplicationStatusService statusService) {
+        this.statusService = statusService;
+    }
 
     public ApplicationDTO convert(Application application) {
         return ApplicationDTO.builder().name(application.getName()).namespace(application.getNamespace())
@@ -31,12 +36,11 @@ public class Converter implements Converters {
         List<V1ContainerStatus> containerStatuses = podStatus != null ? podStatus.getContainerStatuses() : null;
 
         int restarts = 0;
-        PodStatus status = UNKNOWN;
+        PodStatus status = statusService.evaluatePod(pod);
         if (containerStatuses != null && !containerStatuses.isEmpty()) {
-            restarts = containerStatuses.stream().mapToInt(V1ContainerStatus::getRestartCount).sum();
+            restarts = containerStatuses.stream().filter(Objects::nonNull).map(V1ContainerStatus::getRestartCount)
+                    .filter(Objects::nonNull).mapToInt(Integer::intValue).sum();
 
-            boolean allReady = containerStatuses.stream().allMatch(V1ContainerStatus::getReady);
-            status = allReady ? HEALTHY : UNHEALTHY;
         }
 
         return new PodDTO(name, status, phase, restarts);

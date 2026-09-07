@@ -1,16 +1,13 @@
 package com.golias.control_hub.domain.application.action;
 
-import com.golias.control_hub.domain.application.dto.ApplicationDTO;
-import com.golias.control_hub.domain.application.dto.PodDTO;
-import com.golias.control_hub.domain.application.dto.ApplicationResources;
-import com.golias.control_hub.domain.application.dto.IngressDTO;
-import com.golias.control_hub.domain.application.dto.EventDTO;
+import com.golias.control_hub.domain.application.dto.*;
 import com.golias.control_hub.domain.application.entities.Application;
 import com.golias.control_hub.domain.application.exceptions.ApplicationException;
 import com.golias.control_hub.domain.application.repository.ApplicationRepo;
 import com.golias.control_hub.domain.application.utils.Converters;
 import com.golias.control_hub.domain.kubernetes.ports.KubernetesDiscovery;
-import io.kubernetes.client.openapi.models.V1Deployment;
+import com.golias.control_hub.domain.kubernetes.dto.ObservedApplicationState;
+import java.time.Instant;
 import io.micrometer.core.annotation.Timed;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -19,12 +16,11 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-import static com.golias.control_hub.domain.application.dto.PodStatus.*;
-
 @Service
 @Slf4j
 public class GetApplications {
 
+    private final ApplicationStatusService statusService;
     private final ApplicationRepo applicationRepo;
 
     private final Converters converters;
@@ -36,7 +32,9 @@ public class GetApplications {
     private final Counter enrichWithK8sInfoFailures;
 
     public GetApplications(ApplicationRepo applicationRepo, Converters converters,
-            KubernetesDiscovery kubernetesDiscovery, MeterRegistry meterRegistry) {
+            KubernetesDiscovery kubernetesDiscovery, MeterRegistry meterRegistry,
+            ApplicationStatusService statusService) {
+        this.statusService = statusService;
         this.applicationRepo = applicationRepo;
         this.converters = converters;
         this.kubernetesDiscovery = kubernetesDiscovery;
@@ -63,24 +61,17 @@ public class GetApplications {
             List<PodDTO> pods = resources.pods().stream().map(converters::toPodDTO).toList();
             List<IngressDTO> ingressDTOS = resources.ingresses().stream().map(converters::toIngressDTO).toList();
             List<EventDTO> events = resources.events().stream().map(converters::toEventDTO).toList();
-            int healthyPods = (int) pods.stream().filter(p -> HEALTHY.equals(p.status())).count();
+            ApplicationHealth health = statusService.evaluate(new ObservedApplicationState(
+                    resources.deployment() == null ? List.of() : List.of(resources.deployment()), resources.pods(),
+                    resources.services(), resources.ingresses(), Instant.now()));
 
-            int desiredPods = getDesiredReplicas(resources.deployment());
-
-            return new ApplicationDTO(app.name(), app.namespace(), app.description(), app.repositoryUrl(), desiredPods,
-                    healthyPods, pods, ingressDTOS, events);
+            return new ApplicationDTO(app.name(), app.namespace(), app.description(), app.repositoryUrl(),
+                    health.desiredReplicas(), health.readyReplicas(), pods, ingressDTOS, events, health);
         } catch (Exception e) {
             enrichWithK8sInfoFailures.increment();
             log.error("Error fetching k8s info for app {} in namespace {}", app.name(), app.namespace(), e);
             throw new ApplicationException("Failed to enrich with kubernetes info", e);
         }
-    }
-
-    private int getDesiredReplicas(V1Deployment deployment) {
-        if (deployment == null || deployment.getSpec() == null || deployment.getSpec().getReplicas() == null) {
-            return 0;
-        }
-        return deployment.getSpec().getReplicas();
     }
 
 }
