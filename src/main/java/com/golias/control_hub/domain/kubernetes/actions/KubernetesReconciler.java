@@ -1,0 +1,71 @@
+package com.golias.control_hub.domain.kubernetes.actions;
+
+import com.golias.control_hub.domain.application.entities.Application;
+import com.golias.control_hub.domain.application.repository.ApplicationRepo;
+import com.golias.control_hub.domain.kubernetes.dto.ApplicationKey;
+import com.golias.control_hub.domain.kubernetes.dto.ObservedApplicationState;
+import io.kubernetes.client.common.KubernetesObject;
+import io.kubernetes.client.informer.SharedIndexInformer;
+import io.kubernetes.client.openapi.models.V1Deployment;
+import io.kubernetes.client.openapi.models.V1Ingress;
+import io.kubernetes.client.openapi.models.V1Pod;
+import io.kubernetes.client.openapi.models.V1Service;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+
+@Service
+public class KubernetesReconciler {
+
+    private static final String APPLICATION_LABEL = "app.kubernetes.io/name";
+
+    private final KubernetesResourceInformers informers;
+    private final ApplicationRepo applicationRepo;
+
+    public KubernetesReconciler(KubernetesResourceInformers informers, ApplicationRepo applicationRepo) {
+        this.informers = informers;
+        this.applicationRepo = applicationRepo;
+    }
+
+    /** Returns empty when the synced caches contain no resources for this application. */
+    @Transactional
+    public Optional<ObservedApplicationState> reconcile(ApplicationKey key) {
+        Objects.requireNonNull(key, "key");
+        if (!informers.hasSynced()) {
+            throw new IllegalStateException("Kubernetes informer caches have not synced yet");
+        }
+
+        List<V1Deployment> deployments = findResources(informers.deployments(), key);
+        List<V1Pod> pods = findResources(informers.pods(), key);
+        List<V1Service> services = findResources(informers.services(), key);
+        List<V1Ingress> ingresses = findResources(informers.ingresses(), key);
+
+        if (deployments.isEmpty() && pods.isEmpty() && services.isEmpty() && ingresses.isEmpty()) {
+            applicationRepo.findByNameAndNameSpace(key.name(), key.namespace())
+                    .filter(application -> !applicationRepo.hasOperationHistory(application.getId()))
+                    .ifPresent(applicationRepo::delete);
+            return Optional.empty();
+        }
+
+        if (applicationRepo.findByNameAndNameSpace(key.name(), key.namespace()).isEmpty()) {
+            applicationRepo.save(Application.builder().name(key.name()).namespace(key.namespace()).build());
+        }
+
+        ObservedApplicationState state = new ObservedApplicationState(deployments, pods, services, ingresses,
+                Instant.now());
+
+        return Optional.of(state);
+    }
+
+    private <T extends KubernetesObject> List<T> findResources(SharedIndexInformer<T> informer, ApplicationKey key) {
+        return informer.getIndexer().list().stream().filter(resource -> {
+            var metadata = resource.getMetadata();
+            return metadata != null && key.namespace().equals(metadata.getNamespace()) && metadata.getLabels() != null
+                    && key.name().equals(metadata.getLabels().get(APPLICATION_LABEL));
+        }).toList();
+    }
+}

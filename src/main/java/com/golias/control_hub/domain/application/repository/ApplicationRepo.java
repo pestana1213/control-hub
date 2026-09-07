@@ -14,4 +14,7 @@ public interface ApplicationRepo extends ListCrudRepository<Application, UUID> {
 
     @Query("select a from Application a where a.name = :name and a.namespace = :namespace")
     Optional<Application> findByNameAndNameSpace(@Param("name") String name, @Param("namespace") String namespace);
+
+    @Query(value = "select exists(select 1 from operations where application_id = :applicationId)", nativeQuery = true)
+    boolean hasOperationHistory(@Param("applicationId") UUID applicationId);
 }

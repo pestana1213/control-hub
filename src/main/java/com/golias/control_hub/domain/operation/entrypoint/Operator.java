@@ -19,7 +19,8 @@ public class Operator {
     }
 
     @PostMapping
-    public Operation restartApplication(@RequestParam String namespace, @RequestParam String application, @RequestParam OperationType type) {
+    public Operation restartApplication(@RequestParam String namespace, @RequestParam String application,
+            @RequestParam OperationType type) {
         return executor.executeOperation(namespace, application, type);
     }
 }

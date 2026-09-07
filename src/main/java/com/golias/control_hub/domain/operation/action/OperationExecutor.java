@@ -51,20 +51,13 @@ public class OperationExecutor {
             Application application = applicationPort.findApplication(namespace, applicationName);
             ZonedDateTime startedAt = ZonedDateTime.now();
 
-            operation = operationRepository.save(Operation.builder()
-                    .applicationId(application.getId())
-                    .type(type)
-                    .status(OperationStatus.PENDING)
-                    .requestedAt(startedAt)
-                    .startedAt(startedAt)
-                    .build());
+            operation = operationRepository.save(Operation.builder().applicationId(application.getId()).type(type)
+                    .status(OperationStatus.PENDING).requestedAt(startedAt).startedAt(startedAt).build());
 
             handler.execute(application);
 
-            Operation completedOperation = operationRepository.save(operation.toBuilder()
-                    .completedAt(ZonedDateTime.now())
-                    .status(OperationStatus.COMPLETED)
-                    .build());
+            Operation completedOperation = operationRepository.save(
+                    operation.toBuilder().completedAt(ZonedDateTime.now()).status(OperationStatus.COMPLETED).build());
 
             counter(type, "success").increment();
             return completedOperation;
@@ -83,11 +76,8 @@ public class OperationExecutor {
         }
 
         try {
-            operationRepository.save(operation.toBuilder()
-                    .completedAt(ZonedDateTime.now())
-                    .error(cause.getMessage())
-                    .status(OperationStatus.ERROR)
-                    .build());
+            operationRepository.save(operation.toBuilder().completedAt(ZonedDateTime.now()).error(cause.getMessage())
+                    .status(OperationStatus.ERROR).build());
         } catch (RuntimeException persistenceFailure) {
             cause.addSuppressed(persistenceFailure);
             log.error("Could not mark operation {} as failed", operation.getId(), persistenceFailure);
@@ -95,18 +85,13 @@ public class OperationExecutor {
     }
 
     private Counter counter(OperationType type, String outcome) {
-        return Counter.builder(METRIC_NAME + ".requests")
-                .description("Number of application operations")
-                .tags("type", metricTag(type), "outcome", outcome)
-                .register(meterRegistry);
+        return Counter.builder(METRIC_NAME + ".requests").description("Number of application operations")
+                .tags("type", metricTag(type), "outcome", outcome).register(meterRegistry);
     }
 
     private Timer timer(OperationType type) {
-        return Timer.builder(METRIC_NAME + ".duration")
-                .description("Time spent processing an application operation")
-                .tag("type", metricTag(type))
-                .publishPercentileHistogram()
-                .register(meterRegistry);
+        return Timer.builder(METRIC_NAME + ".duration").description("Time spent processing an application operation")
+                .tag("type", metricTag(type)).publishPercentileHistogram().register(meterRegistry);
     }
 
     private static String metricTag(OperationType type) {

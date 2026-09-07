@@ -32,16 +32,13 @@ public class KubernetesApplicationOperations implements KubernetesOperations {
         this.appsV1Api = new AppsV1Api(apiClient);
         this.meterRegistry = meterRegistry;
         this.successfulRestarts = Counter.builder(RESTART_METRIC + ".requests")
-                .description("Number of Kubernetes deployment restart requests")
-                .tag("outcome", "success")
+                .description("Number of Kubernetes deployment restart requests").tag("outcome", "success")
                 .register(meterRegistry);
         this.failedRestarts = Counter.builder(RESTART_METRIC + ".requests")
-                .description("Number of Kubernetes deployment restart requests")
-                .tag("outcome", "failure")
+                .description("Number of Kubernetes deployment restart requests").tag("outcome", "failure")
                 .register(meterRegistry);
         this.restartDuration = Timer.builder(RESTART_METRIC + ".duration")
-                .description("Time spent requesting a Kubernetes deployment restart")
-                .publishPercentileHistogram()
+                .description("Time spent requesting a Kubernetes deployment restart").publishPercentileHistogram()
                 .register(meterRegistry);
     }
 
