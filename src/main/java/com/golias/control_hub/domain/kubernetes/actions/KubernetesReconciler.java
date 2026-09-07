@@ -4,6 +4,7 @@ import com.golias.control_hub.domain.application.entities.Application;
 import com.golias.control_hub.domain.application.repository.ApplicationRepo;
 import com.golias.control_hub.domain.kubernetes.dto.ApplicationKey;
 import com.golias.control_hub.domain.kubernetes.dto.ObservedApplicationState;
+import com.golias.control_hub.domain.kubernetes.ports.KubernetesObservedState;
 import io.kubernetes.client.common.KubernetesObject;
 import io.kubernetes.client.informer.SharedIndexInformer;
 import io.kubernetes.client.openapi.models.V1Deployment;
@@ -25,10 +26,13 @@ public class KubernetesReconciler {
 
     private final KubernetesResourceInformers informers;
     private final ApplicationRepo applicationRepo;
+    private final KubernetesObservedState observedState;
 
-    public KubernetesReconciler(KubernetesResourceInformers informers, ApplicationRepo applicationRepo) {
+    public KubernetesReconciler(KubernetesResourceInformers informers, ApplicationRepo applicationRepo,
+            KubernetesObservedState observedState) {
         this.informers = informers;
         this.applicationRepo = applicationRepo;
+        this.observedState = observedState;
     }
 
     /** Returns empty when the synced caches contain no resources for this application. */
@@ -45,6 +49,7 @@ public class KubernetesReconciler {
         List<V1Ingress> ingresses = findResources(informers.ingresses(), key);
 
         if (deployments.isEmpty() && pods.isEmpty() && services.isEmpty() && ingresses.isEmpty()) {
+            observedState.remove(key);
             applicationRepo.findByNameAndNameSpace(key.name(), key.namespace())
                     .filter(application -> !applicationRepo.hasOperationHistory(application.getId()))
                     .ifPresent(applicationRepo::delete);
@@ -57,6 +62,7 @@ public class KubernetesReconciler {
 
         ObservedApplicationState state = new ObservedApplicationState(deployments, pods, services, ingresses,
                 Instant.now());
+        observedState.put(key, state);
 
         return Optional.of(state);
     }

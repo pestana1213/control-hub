@@ -5,6 +5,8 @@ import com.golias.control_hub.domain.application.entities.Application;
 import com.golias.control_hub.domain.application.repository.ApplicationRepo;
 import com.golias.control_hub.domain.application.utils.Converter;
 import com.golias.control_hub.domain.kubernetes.ports.KubernetesDiscovery;
+import com.golias.control_hub.domain.kubernetes.dto.ApplicationKey;
+import com.golias.control_hub.domain.kubernetes.state.InMemoryObservedStateStore;
 import io.kubernetes.client.openapi.models.*;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
@@ -28,8 +30,12 @@ class GetApplicationsTests {
                 .status(new V1PodStatus().conditions(List.of(new V1PodCondition().type("Ready").status("True"))));
         when(discovery.hydrateApplication("production", "api")).thenReturn(ApplicationResources.builder()
                 .deployment(deployment).pods(List.of(pod)).ingresses(List.of()).events(List.of()).build());
+        var store = new InMemoryObservedStateStore();
+        store.put(new ApplicationKey("production", "api"),
+                new com.golias.control_hub.domain.kubernetes.dto.ObservedApplicationState(List.of(deployment),
+                        List.of(pod), List.of(), List.of(), java.time.Instant.now()));
         try {
-            var app = new GetApplications(repo, new Converter(status), discovery, registry, status)
+            var app = new GetApplications(repo, new Converter(status), store, registry, status)
                     .getRegisteredApplications().getFirst();
             assertEquals(ApplicationStatus.DEGRADED, app.health().status());
             assertEquals(ApplicationStatusReason.REPLICA_NOT_READY, app.health().reasons().getFirst().code());

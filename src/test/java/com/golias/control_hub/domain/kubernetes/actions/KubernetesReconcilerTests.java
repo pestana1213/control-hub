@@ -3,6 +3,7 @@ package com.golias.control_hub.domain.kubernetes.actions;
 import com.golias.control_hub.domain.kubernetes.dto.ApplicationKey;
 import com.golias.control_hub.domain.application.entities.Application;
 import com.golias.control_hub.domain.application.repository.ApplicationRepo;
+import com.golias.control_hub.domain.kubernetes.ports.KubernetesObservedState;
 import io.kubernetes.client.openapi.models.V1Deployment;
 import io.kubernetes.client.openapi.models.V1Ingress;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
@@ -22,7 +23,8 @@ class KubernetesReconcilerTests {
 
     private final KubernetesResourceInformers informers = mock(KubernetesResourceInformers.class, RETURNS_DEEP_STUBS);
     private final ApplicationRepo applicationRepo = mock(ApplicationRepo.class);
-    private final KubernetesReconciler reconciler = new KubernetesReconciler(informers, applicationRepo);
+    private final KubernetesObservedState observedState = mock(KubernetesObservedState.class);
+    private final KubernetesReconciler reconciler = new KubernetesReconciler(informers, applicationRepo, observedState);
     private final ApplicationKey key = new ApplicationKey("production", "api");
 
     @BeforeEach
