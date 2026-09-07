@@ -3,6 +3,7 @@ package com.golias.control_hub.domain.operation.action;
 import com.golias.control_hub.domain.application.entities.Application;
 import com.golias.control_hub.domain.kubernetes.ports.KubernetesOperations;
 import com.golias.control_hub.domain.operation.entities.OperationType;
+import com.golias.control_hub.domain.operation.dto.OperationRequest;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -20,7 +21,7 @@ public class RestartOperationHandler implements OperationHandler {
     }
 
     @Override
-    public void execute(Application application) {
+    public void execute(Application application, OperationRequest request) {
         kubernetesOperations.restart(application.getNamespace(), application.getName());
     }
 }

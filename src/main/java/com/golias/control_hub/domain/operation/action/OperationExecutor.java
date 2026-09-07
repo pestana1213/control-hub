@@ -5,6 +5,7 @@ import com.golias.control_hub.domain.application.port.ApplicationPort;
 import com.golias.control_hub.domain.operation.entities.Operation;
 import com.golias.control_hub.domain.operation.entities.OperationStatus;
 import com.golias.control_hub.domain.operation.entities.OperationType;
+import com.golias.control_hub.domain.operation.dto.OperationRequest;
 import com.golias.control_hub.domain.operation.repository.OperationRepository;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -38,11 +39,21 @@ public class OperationExecutor {
     }
 
     public Operation executeOperation(String namespace, String applicationName, OperationType type) {
-        Objects.requireNonNull(type, "type must not be null");
-        return execute(namespace, applicationName, handlers.get(type));
+        return executeOperation(new OperationRequest(namespace, applicationName, type, null, null, null));
     }
 
-    private Operation execute(String namespace, String applicationName, OperationHandler handler) {
+    public Operation executeOperation(OperationRequest request) {
+        Objects.requireNonNull(request, "request must not be null");
+        OperationType type = Objects.requireNonNull(request.type(), "type must not be null");
+        OperationHandler handler = handlers.get(type);
+        if (handler == null) {
+            throw new UnsupportedOperationException("Operation type is not implemented: " + type);
+        }
+        return execute(request.namespace(), request.application(), handler, request);
+    }
+
+    private Operation execute(String namespace, String applicationName, OperationHandler handler,
+            OperationRequest request) {
         OperationType type = handler.type();
         Timer.Sample sample = Timer.start(meterRegistry);
         Operation operation = null;
@@ -54,7 +65,7 @@ public class OperationExecutor {
             operation = operationRepository.save(Operation.builder().applicationId(application.getId()).type(type)
                     .status(OperationStatus.PENDING).requestedAt(startedAt).startedAt(startedAt).build());
 
-            handler.execute(application);
+            handler.execute(application, request);
 
             Operation completedOperation = operationRepository.save(
                     operation.toBuilder().completedAt(ZonedDateTime.now()).status(OperationStatus.COMPLETED).build());
@@ -105,12 +116,6 @@ public class OperationExecutor {
             OperationHandler duplicate = indexedHandlers.put(handler.type(), handler);
             if (duplicate != null) {
                 throw new IllegalStateException("Multiple handlers registered for operation type " + handler.type());
-            }
-        }
-
-        for (OperationType type : OperationType.values()) {
-            if (!indexedHandlers.containsKey(type)) {
-                throw new IllegalStateException("No handler registered for operation type " + type);
             }
         }
 

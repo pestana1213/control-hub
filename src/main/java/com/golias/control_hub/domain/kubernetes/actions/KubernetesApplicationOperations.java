@@ -72,6 +72,72 @@ public class KubernetesApplicationOperations implements KubernetesOperations {
         }
     }
 
+    @Override
+    public void scale(String namespace, String name, int replicas) {
+        execute("scale", namespace, name,
+                () -> patch(namespace, name, "{\"spec\":{\"replicas\":" + replicas + "}}", "scale"));
+    }
+
+    @Override
+    public void deploy(String namespace, String name, String image) {
+        execute("deploy", namespace, name, () -> {
+            requireNonBlank(image, "image");
+            patch(namespace, name, "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"" + name
+                    + "\",\"image\":\"" + image.replace("\"", "\\\"") + "\"}]}}}}", "deploy");
+        });
+    }
+
+    @Override
+    public void sync(String namespace, String name) {
+        execute("sync", namespace, name, () -> {
+            throw unsupported("SYNC", namespace, name, "a desired state source is required");
+        });
+    }
+
+    @Override
+    public void rollback(String namespace, String name, long revision) {
+        execute("rollback", namespace, name, () -> {
+            if (revision < 1) {
+                throw new IllegalArgumentException("revision must be positive");
+            }
+            throw unsupported("ROLLBACK", namespace, name, "Kubernetes revision history lookup is not implemented yet");
+        });
+    }
+
+    private void execute(String operation, String namespace, String name, Runnable action) {
+        Timer.Sample sample = Timer.start(meterRegistry);
+        try {
+            requireNonBlank(namespace, "namespace");
+            requireNonBlank(name, "name");
+            action.run();
+            Counter.builder("control_hub.kubernetes.operation.requests").tag("operation", operation)
+                    .tag("outcome", "success").register(meterRegistry).increment();
+        } catch (RuntimeException exception) {
+            Counter.builder("control_hub.kubernetes.operation.requests").tag("operation", operation)
+                    .tag("outcome", "failure").register(meterRegistry).increment();
+            throw exception;
+        } finally {
+            sample.stop(Timer.builder("control_hub.kubernetes.operation.duration").tag("operation", operation)
+                    .publishPercentileHistogram().register(meterRegistry));
+        }
+    }
+
+    private void patch(String namespace, String name, String payload, String operation) {
+        try {
+            requireNonBlank(namespace, "namespace");
+            requireNonBlank(name, "name");
+            appsV1Api.patchNamespacedDeployment(name, namespace, new V1Patch(payload)).execute();
+        } catch (ApiException e) {
+            throw new KubernetesException("Failed to " + operation + " Kubernetes deployment", e);
+        }
+    }
+
+    private UnsupportedOperationException unsupported(String operation, String namespace, String name,
+            String missingInput) {
+        return new UnsupportedOperationException(
+                operation + " is not executable yet for " + namespace + "/" + name + ": " + missingInput);
+    }
+
     private static void requireNonBlank(String value, String field) {
         Objects.requireNonNull(value, field + " must not be null");
         if (value.isBlank()) {

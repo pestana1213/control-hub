@@ -51,4 +51,12 @@ public class GlobalExceptionHandler {
 
         return problem;
     }
+
+    @ExceptionHandler(UnsupportedOperationException.class)
+    public ProblemDetail handleUnsupportedOperation(UnsupportedOperationException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_IMPLEMENTED);
+        problem.setTitle("Operation not implemented");
+        problem.setDetail(exception.getMessage());
+        return problem;
+    }
 }
