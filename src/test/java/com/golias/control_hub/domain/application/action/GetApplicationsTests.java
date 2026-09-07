@@ -2,6 +2,9 @@ package com.golias.control_hub.domain.application.action;
 
 import com.golias.control_hub.domain.application.dto.*;
 import com.golias.control_hub.domain.application.entities.Application;
+import com.golias.control_hub.domain.application.enums.ApplicationStatus;
+import com.golias.control_hub.domain.application.enums.ApplicationStatusReason;
+import com.golias.control_hub.domain.application.enums.PodStatus;
 import com.golias.control_hub.domain.application.repository.ApplicationRepo;
 import com.golias.control_hub.domain.application.utils.Converter;
 import com.golias.control_hub.domain.kubernetes.ports.KubernetesDiscovery;

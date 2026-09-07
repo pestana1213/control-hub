@@ -5,7 +5,7 @@ import com.golias.control_hub.domain.application.action.ApplicationStatusService
 import com.golias.control_hub.domain.application.dto.EventDTO;
 import com.golias.control_hub.domain.application.dto.IngressDTO;
 import com.golias.control_hub.domain.application.dto.PodDTO;
-import com.golias.control_hub.domain.application.dto.PodStatus;
+import com.golias.control_hub.domain.application.enums.PodStatus;
 import com.golias.control_hub.domain.application.entities.Application;
 import io.kubernetes.client.openapi.models.*;
 import org.springframework.stereotype.Component;

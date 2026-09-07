@@ -1,6 +1,8 @@
 package com.golias.control_hub.domain.application.action;
 
-import com.golias.control_hub.domain.application.dto.*;
+import com.golias.control_hub.domain.application.enums.ApplicationStatus;
+import com.golias.control_hub.domain.application.enums.ApplicationStatusReason;
+import com.golias.control_hub.domain.application.enums.PodStatus;
 import com.golias.control_hub.domain.kubernetes.dto.ObservedApplicationState;
 import io.kubernetes.client.openapi.models.*;
 import org.junit.jupiter.api.Test;
