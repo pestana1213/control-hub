@@ -117,6 +117,6 @@ class ApplicationStatusServiceTests {
     }
 
     private ObservedApplicationState state(List<V1Deployment> deployments, List<V1Pod> pods) {
-        return new ObservedApplicationState(deployments, pods, List.of(), List.of(), Instant.now());
+        return new ObservedApplicationState(deployments, pods, List.of(), List.of(), List.of(), Instant.now());
     }
 }

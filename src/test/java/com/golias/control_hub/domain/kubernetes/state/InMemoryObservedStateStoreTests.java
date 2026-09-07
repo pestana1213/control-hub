@@ -14,7 +14,7 @@ class InMemoryObservedStateStoreTests {
     void storesAndRemovesStateByApplicationKey() {
         var store = new InMemoryObservedStateStore();
         var key = new ApplicationKey("production", "api");
-        var state = new ObservedApplicationState(List.of(), List.of(), List.of(), List.of(), Instant.now());
+        var state = new ObservedApplicationState(List.of(), List.of(), List.of(), List.of(), List.of(), Instant.now());
         assertTrue(store.get(key).isEmpty());
         store.put(key, state);
         assertEquals(state, store.get(key).orElseThrow());

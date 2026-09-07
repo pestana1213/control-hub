@@ -62,13 +62,13 @@ public class GetApplications {
                     .orElseThrow(() -> new ApplicationException("Observed Kubernetes state is not available"));
             ApplicationResources resources = ApplicationResources.builder()
                     .deployment(state.deployment().isEmpty() ? null : state.deployment().getFirst()).pods(state.pods())
-                    .services(state.services()).ingresses(state.ingresses()).events(List.of()).build();
+                    .services(state.services()).ingresses(state.ingresses()).events(state.events()).build();
             List<PodDTO> pods = resources.pods().stream().map(converters::toPodDTO).toList();
             List<IngressDTO> ingressDTOS = resources.ingresses().stream().map(converters::toIngressDTO).toList();
             List<EventDTO> events = resources.events().stream().map(converters::toEventDTO).toList();
             ApplicationHealth health = statusService.evaluate(new ObservedApplicationState(
                     resources.deployment() == null ? List.of() : List.of(resources.deployment()), resources.pods(),
-                    resources.services(), resources.ingresses(), Instant.now()));
+                    resources.services(), resources.ingresses(), resources.events(), Instant.now()));
 
             return new ApplicationDTO(app.name(), app.namespace(), app.description(), app.repositoryUrl(),
                     health.desiredReplicas(), health.readyReplicas(), pods, ingressDTOS, events, health);

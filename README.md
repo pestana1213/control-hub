@@ -61,7 +61,9 @@ Deploying an image requires `image`:
 }
 ```
 
-Operations are persisted with their type, status, request time, start time, completion time and error message. Validation and Kubernetes execution failures are recorded as `ERROR`.
+The request returns `202 Accepted` with an operation record. Processing happens asynchronously in a virtual thread. Poll `GET /v1/operations/{id}` to follow the operation through `PENDING`, `RUNNING`, `COMPLETED` or `ERROR`.
+
+Before accepting an operation, Control Hub validates that the application is registered, that its Kubernetes state has been discovered, that the namespace is allowed, and that no other operation is active for the same application. Operations are persisted with their type, status, request time, start time, completion time and error message. Validation and Kubernetes execution failures are recorded as `ERROR`.
 
 `ROLLBACK` accepts a `revision` field. The request and operation history are modelled, but applying Kubernetes revision history still needs to be completed. `SYNC` likewise requires a desired-state source to be connected.
 

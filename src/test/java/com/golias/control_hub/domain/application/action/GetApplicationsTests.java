@@ -33,7 +33,7 @@ class GetApplicationsTests {
         var store = new InMemoryObservedStateStore();
         store.put(new ApplicationKey("production", "api"),
                 new com.golias.control_hub.domain.kubernetes.dto.ObservedApplicationState(List.of(deployment),
-                        List.of(pod), List.of(), List.of(), java.time.Instant.now()));
+                        List.of(pod), List.of(), List.of(), List.of(), java.time.Instant.now()));
         try {
             var app = new GetApplications(repo, new Converter(status), store, registry, status)
                     .getRegisteredApplications().getFirst();

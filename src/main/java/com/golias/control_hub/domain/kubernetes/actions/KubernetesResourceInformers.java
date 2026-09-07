@@ -12,6 +12,8 @@ import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.openapi.apis.NetworkingV1Api;
 import io.kubernetes.client.openapi.models.V1Deployment;
 import io.kubernetes.client.openapi.models.V1DeploymentList;
+import io.kubernetes.client.openapi.models.CoreV1Event;
+import io.kubernetes.client.openapi.models.CoreV1EventList;
 import io.kubernetes.client.openapi.models.V1Ingress;
 import io.kubernetes.client.openapi.models.V1IngressList;
 import io.kubernetes.client.openapi.models.V1Pod;
@@ -25,6 +27,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 @Slf4j
 @Component
@@ -37,6 +40,7 @@ public class KubernetesResourceInformers implements SmartLifecycle {
     private final SharedIndexInformer<V1Pod> pods;
     private final SharedIndexInformer<V1Service> services;
     private final SharedIndexInformer<V1Ingress> ingresses;
+    private final SharedIndexInformer<CoreV1Event> events;
     private final ReconciliationQueue queue;
 
     private volatile boolean running;
@@ -69,6 +73,11 @@ public class KubernetesResourceInformers implements SmartLifecycle {
                         .timeoutSeconds(params.timeoutSeconds).watch(params.watch).buildCall(null),
                 V1Ingress.class, V1IngressList.class, RESYNC_MILLIS);
 
+        events = factory.sharedIndexInformerFor(
+                params -> coreApi.listEventForAllNamespaces().resourceVersion(params.resourceVersion)
+                        .timeoutSeconds(params.timeoutSeconds).watch(params.watch).buildCall(null),
+                CoreV1Event.class, CoreV1EventList.class, RESYNC_MILLIS);
+
         registerHandlers();
     }
 
@@ -79,7 +88,7 @@ public class KubernetesResourceInformers implements SmartLifecycle {
         }
         factory.startAllRegisteredInformers();
         running = true;
-        log.info("Started Kubernetes informers for deployments, pods, services and ingresses");
+        log.info("Started Kubernetes informers for deployments, pods, services, ingresses and events");
     }
 
     @Override
@@ -99,7 +108,8 @@ public class KubernetesResourceInformers implements SmartLifecycle {
     }
 
     public boolean hasSynced() {
-        return deployments.hasSynced() && pods.hasSynced() && services.hasSynced() && ingresses.hasSynced();
+        return deployments.hasSynced() && pods.hasSynced() && services.hasSynced() && ingresses.hasSynced()
+                && events.hasSynced();
     }
 
     public SharedIndexInformer<V1Deployment> deployments() {
@@ -118,11 +128,16 @@ public class KubernetesResourceInformers implements SmartLifecycle {
         return ingresses;
     }
 
+    public SharedIndexInformer<CoreV1Event> events() {
+        return events;
+    }
+
     private void registerHandlers() {
         deployments.addEventHandler(handler("Deployment"));
         pods.addEventHandler(handler("Pod"));
         services.addEventHandler(handler("Service"));
         ingresses.addEventHandler(handler("Ingress"));
+        events.addEventHandler(handler("Event"));
     }
 
     private <T extends KubernetesObject> ResourceEventHandler<T> handler(String resourceType) {
@@ -159,6 +174,9 @@ public class KubernetesResourceInformers implements SmartLifecycle {
 
     private ApplicationKey applicationKey(KubernetesObject resource) {
         var metadata = resource.getMetadata();
+        if (resource instanceof CoreV1Event event) {
+            return applicationKeyForEvent(event);
+        }
         if (metadata == null || metadata.getLabels() == null) {
             return null;
         }
@@ -168,6 +186,22 @@ public class KubernetesResourceInformers implements SmartLifecycle {
             return null;
         }
         return new ApplicationKey(namespace, name);
+    }
+
+    private ApplicationKey applicationKeyForEvent(CoreV1Event event) {
+        var metadata = event.getMetadata();
+        var involved = event.getInvolvedObject();
+        if (metadata == null || involved == null || involved.getName() == null) {
+            return null;
+        }
+        String namespace = metadata.getNamespace();
+        String name = involved.getName();
+        return Stream.of(deployments, pods, services, ingresses)
+                .flatMap(informer -> informer.getIndexer().list().stream())
+                .filter(resource -> resource.getMetadata() != null
+                        && namespace.equals(resource.getMetadata().getNamespace())
+                        && name.equals(resource.getMetadata().getName()))
+                .map(this::applicationKey).filter(Objects::nonNull).findFirst().orElse(null);
     }
 
     private void enqueue(ApplicationKey key) {

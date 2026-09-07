@@ -34,6 +34,7 @@ class KubernetesReconcilerTests {
         when(informers.pods().getIndexer().list()).thenReturn(List.of());
         when(informers.services().getIndexer().list()).thenReturn(List.of());
         when(informers.ingresses().getIndexer().list()).thenReturn(List.of());
+        when(informers.events().getIndexer().list()).thenReturn(List.of());
     }
 
     @Test

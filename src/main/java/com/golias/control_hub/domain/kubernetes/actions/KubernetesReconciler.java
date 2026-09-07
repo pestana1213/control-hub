@@ -8,6 +8,7 @@ import com.golias.control_hub.domain.kubernetes.ports.KubernetesObservedState;
 import io.kubernetes.client.common.KubernetesObject;
 import io.kubernetes.client.informer.SharedIndexInformer;
 import io.kubernetes.client.openapi.models.V1Deployment;
+import io.kubernetes.client.openapi.models.CoreV1Event;
 import io.kubernetes.client.openapi.models.V1Ingress;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1Service;
@@ -18,6 +19,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.HashSet;
 
 @Service
 public class KubernetesReconciler {
@@ -47,6 +50,17 @@ public class KubernetesReconciler {
         List<V1Pod> pods = findResources(informers.pods(), key);
         List<V1Service> services = findResources(informers.services(), key);
         List<V1Ingress> ingresses = findResources(informers.ingresses(), key);
+        Set<String> resourceNames = new HashSet<>();
+        deployments.forEach(resource -> addName(resourceNames, resource));
+        pods.forEach(resource -> addName(resourceNames, resource));
+        services.forEach(resource -> addName(resourceNames, resource));
+        ingresses.forEach(resource -> addName(resourceNames, resource));
+        List<CoreV1Event> events = informers.events().getIndexer().list().stream().filter(event -> {
+            var metadata = event.getMetadata();
+            var involved = event.getInvolvedObject();
+            return metadata != null && key.namespace().equals(metadata.getNamespace()) && involved != null
+                    && resourceNames.contains(involved.getName());
+        }).toList();
 
         if (deployments.isEmpty() && pods.isEmpty() && services.isEmpty() && ingresses.isEmpty()) {
             observedState.remove(key);
@@ -60,11 +74,17 @@ public class KubernetesReconciler {
             applicationRepo.save(Application.builder().name(key.name()).namespace(key.namespace()).build());
         }
 
-        ObservedApplicationState state = new ObservedApplicationState(deployments, pods, services, ingresses,
+        ObservedApplicationState state = new ObservedApplicationState(deployments, pods, services, ingresses, events,
                 Instant.now());
         observedState.put(key, state);
 
         return Optional.of(state);
+    }
+
+    private void addName(Set<String> names, KubernetesObject resource) {
+        if (resource.getMetadata() != null && resource.getMetadata().getName() != null) {
+            names.add(resource.getMetadata().getName());
+        }
     }
 
     private <T extends KubernetesObject> List<T> findResources(SharedIndexInformer<T> informer, ApplicationKey key) {
