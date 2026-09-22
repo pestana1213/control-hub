@@ -29,6 +29,9 @@ It also reports explicit reasons such as `POD_CRASH_LOOP`, `REPLICA_NOT_READY`, 
 
 ## Operations API
 
+Interactive API documentation is available at `GET /swagger-ui/index.html`; the
+OpenAPI document is available at `GET /v3/api-docs`.
+
 Operations use `POST /v1/operations` with a JSON body:
 
 ```json
