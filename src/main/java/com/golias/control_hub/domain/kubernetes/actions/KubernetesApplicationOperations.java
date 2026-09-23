@@ -113,6 +113,7 @@ public class KubernetesApplicationOperations implements KubernetesOperations {
             Counter.builder("control_hub.kubernetes.operation.requests").tag("operation", operation)
                     .tag("outcome", "success").register(meterRegistry).increment();
         } catch (RuntimeException exception) {
+            log.error("Unexpected failure executing {} {} in namespace {}", operation,name, namespace, exception);
             Counter.builder("control_hub.kubernetes.operation.requests").tag("operation", operation)
                     .tag("outcome", "failure").register(meterRegistry).increment();
             throw exception;
