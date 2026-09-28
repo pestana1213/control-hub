@@ -1,0 +1,356 @@
+{
+    "metrics": {
+        "registry_stable": {
+            "passes": 477424,
+            "fails": 0,
+            "value": 1
+        },
+        "vus": {
+            "value": 1,
+            "min": 1,
+            "max": 11
+        },
+        "http_req_tls_handshaking": {
+            "p(90)": 0,
+            "p(95)": 0,
+            "p(99)": 0,
+            "max": 0,
+            "avg": 0,
+            "min": 0,
+            "med": 0
+        },
+        "iteration_duration": {
+            "max": 5015.637,
+            "avg": 1.961390211928592,
+            "min": 0.52,
+            "med": 1.616875,
+            "p(90)": 2.4225126000000006,
+            "p(95)": 2.790291,
+            "p(99)": 3.86329143
+        },
+        "http_reqs": {
+            "count": 477460,
+            "rate": 3973.9715434306704
+        },
+        "applications_returned": {
+            "p(99)": 1,
+            "max": 1,
+            "avg": 1,
+            "min": 1,
+            "med": 1,
+            "p(90)": 1,
+            "p(95)": 1
+        },
+        "pods_returned": {
+            "p(95)": 1,
+            "p(99)": 1,
+            "max": 1,
+            "avg": 1,
+            "min": 1,
+            "med": 1,
+            "p(90)": 1
+        },
+        "control_hub_backend_server_requests_total": {
+            "count": 477434,
+            "rate": 3973.7551415119146
+        },
+        "events_returned": {
+            "p(90)": 12,
+            "p(95)": 12,
+            "p(99)": 12,
+            "max": 12,
+            "avg": 12,
+            "min": 12,
+            "med": 12
+        },
+        "control_hub_backend_scrape_duration": {
+            "p(95)": 6.05845,
+            "p(99)": 10.637709999999998,
+            "max": 11.977,
+            "avg": 3.8370416666666665,
+            "min": 2.044,
+            "med": 3.3884999999999996,
+            "p(90)": 5.4618
+        },
+        "control_hub_backend_reconciliation_queue_size": {
+            "value": 0,
+            "min": 0,
+            "max": 0
+        },
+        "ingresses_returned": {
+            "p(95)": 0,
+            "p(99)": 0,
+            "max": 0,
+            "avg": 0,
+            "min": 0,
+            "med": 0,
+            "p(90)": 0
+        },
+        "http_req_sending": {
+            "min": 0,
+            "med": 0.002,
+            "p(90)": 0.004,
+            "p(95)": 0.007,
+            "p(99)": 0.016,
+            "max": 3.425,
+            "avg": 0.002600113098462485
+        },
+        "http_req_waiting": {
+            "p(90)": 2.204,
+            "p(95)": 2.549,
+            "p(99)": 3.5714099999999958,
+            "max": 17.063,
+            "avg": 1.5349083064549787,
+            "min": 0,
+            "med": 1.448
+        },
+        "control_hub_backend_failure_total": {
+            "rate": 0,
+            "count": 0
+        },
+        "control_hub_backend_jvm_heap_used_bytes": {
+            "value": 163828064,
+            "min": 84149552,
+            "max": 180767984
+        },
+        "http_req_duration": {
+            "avg": 1.5542383655175422,
+            "min": 0.422,
+            "med": 1.467,
+            "p(90)": 2.228,
+            "p(95)": 2.576,
+            "p(99)": 3.6054099999999956,
+            "max": 17.094
+        },
+        "control_hub_backend_jvm_gc_pause_seconds": {
+            "p(99)": 0.018,
+            "max": 0.018,
+            "avg": 0.018000000000000006,
+            "min": 0.018,
+            "med": 0.018,
+            "p(90)": 0.018,
+            "p(95)": 0.018
+        },
+        "http_req_blocked": {
+            "med": 0.001,
+            "p(90)": 0.001,
+            "p(95)": 0.002,
+            "p(99)": 0.004,
+            "max": 1.38,
+            "avg": 0.000827933230005352,
+            "min": 0
+        },
+        "control_hub_backend_exceptions_total": {
+            "count": 0,
+            "rate": 0
+        },
+        "vus_max": {
+            "value": 11,
+            "min": 11,
+            "max": 11
+        },
+        "control_hub_backend_queue_enqueue_rejected": {
+            "count": 0,
+            "rate": 0
+        },
+        "applications_duration": {
+            "avg": 1.5541128532949187,
+            "min": 0.422,
+            "med": 1.467,
+            "p(90)": 2.228,
+            "p(95)": 2.576,
+            "p(99)": 3.604,
+            "max": 17.094,
+            "thresholds": {
+                "p(95)<500": false,
+                "p(99)<1500": false
+            }
+        },
+        "control_hub_backend_scrape_failed": {
+            "passes": 0,
+            "fails": 24,
+            "value": 0
+        },
+        "control_hub_backend_informers_synced": {
+            "max": 1,
+            "value": 1,
+            "min": 1
+        },
+        "checks": {
+            "passes": 5729208,
+            "fails": 0,
+            "thresholds": {
+                "rate>0.99": false
+            },
+            "value": 1
+        },
+        "payload_bytes": {
+            "max": 4340,
+            "avg": 4340,
+            "min": 4340,
+            "med": 4340,
+            "p(90)": 4340,
+            "p(95)": 4340,
+            "p(99)": 4340
+        },
+        "applications_requests": {
+            "count": 477434,
+            "rate": 3973.7551415119146,
+            "thresholds": {
+                "count>=1": false
+            }
+        },
+        "iterations": {
+            "count": 477458,
+            "rate": 3973.954897129228
+        },
+        "data_sent": {
+            "count": 40584196,
+            "rate": 337788.38021407626
+        },
+        "http_req_duration{expected_response:true}": {
+            "p(95)": 2.576,
+            "p(99)": 3.6054099999999956,
+            "max": 17.094,
+            "avg": 1.5542383655175422,
+            "min": 0.422,
+            "med": 1.467,
+            "p(90)": 2.228
+        },
+        "http_req_connecting": {
+            "max": 0.407,
+            "avg": 0.0000035793574330833998,
+            "min": 0,
+            "med": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "p(99)": 0
+        },
+        "http_req_receiving": {
+            "avg": 0.016729945964058024,
+            "min": 0.003,
+            "med": 0.011,
+            "p(90)": 0.033,
+            "p(95)": 0.041,
+            "p(99)": 0.063,
+            "max": 2.427
+        },
+        "applications_failed": {
+            "fails": 477434,
+            "passes": 0,
+            "thresholds": {
+                "rate<0.01": false
+            },
+            "value": 0
+        },
+        "applications_health_healthy_total": {
+            "count": 477434,
+            "rate": 3973.7551415119146
+        },
+        "http_req_failed": {
+            "passes": 0,
+            "fails": 477460,
+            "value": 0
+        },
+        "data_received": {
+            "count": 2107578903,
+            "rate": 17541696.866872262
+        }
+    },
+    "setup_data": {
+        "applications": 1,
+        "payloadBytes": 4340
+    },
+    "root_group": {
+        "checks": {
+            "status is 200": {
+                "name": "status is 200",
+                "path": "::status is 200",
+                "id": "6210a8cd14cd70477eba5c5e4cb3fb5f",
+                "passes": 477434,
+                "fails": 0
+            },
+            "content type is JSON": {
+                "name": "content type is JSON",
+                "path": "::content type is JSON",
+                "id": "d5fbd5da2352e6b9f7275f2470104866",
+                "passes": 477434,
+                "fails": 0
+            },
+            "body is a JSON array": {
+                "name": "body is a JSON array",
+                "path": "::body is a JSON array",
+                "id": "82be8d1143fc1c16e45fcbdedb1a2b1d",
+                "passes": 477434,
+                "fails": 0
+            },
+            "every application has a name and namespace": {
+                "name": "every application has a name and namespace",
+                "path": "::every application has a name and namespace",
+                "id": "1234855294212f9adf51767f17b2854e",
+                "passes": 477434,
+                "fails": 0
+            },
+            "every application exposes a health block": {
+                "passes": 477434,
+                "fails": 0,
+                "name": "every application exposes a health block",
+                "path": "::every application exposes a health block",
+                "id": "8af9ed50514202bf8eb472f1ce6eedc5"
+            },
+            "health status is a known value": {
+                "id": "4db2cab280e81f52c3d47f0c24c92d3d",
+                "passes": 477434,
+                "fails": 0,
+                "name": "health status is a known value",
+                "path": "::health status is a known value"
+            },
+            "pod, ingress and event collections are arrays": {
+                "fails": 0,
+                "name": "pod, ingress and event collections are arrays",
+                "path": "::pod, ingress and event collections are arrays",
+                "id": "0ffc7d36de0c249ded785c1a028a8d72",
+                "passes": 477434
+            },
+            "pod status is a known value": {
+                "name": "pod status is a known value",
+                "path": "::pod status is a known value",
+                "id": "c57aaa5148bc03c9e8832d3eca36271b",
+                "passes": 477434,
+                "fails": 0
+            },
+            "pod entries are complete": {
+                "name": "pod entries are complete",
+                "path": "::pod entries are complete",
+                "id": "7a6ad4f05f46ded1c244236b87464ee2",
+                "passes": 477434,
+                "fails": 0
+            },
+            "replica counters agree with health": {
+                "name": "replica counters agree with health",
+                "path": "::replica counters agree with health",
+                "id": "1e30d42c524422672704578e224f7af4",
+                "passes": 477434,
+                "fails": 0
+            },
+            "health reasons carry known codes": {
+                "fails": 0,
+                "name": "health reasons carry known codes",
+                "path": "::health reasons carry known codes",
+                "id": "d1287eab335d72e5fdd0cb2d4a4b28d7",
+                "passes": 477434
+            },
+            "ingress urls are arrays of strings": {
+                "passes": 477434,
+                "fails": 0,
+                "name": "ingress urls are arrays of strings",
+                "path": "::ingress urls are arrays of strings",
+                "id": "39b6e587e25b143436f89b8e9b07bc2c"
+            }
+        },
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {}
+    }
+}
