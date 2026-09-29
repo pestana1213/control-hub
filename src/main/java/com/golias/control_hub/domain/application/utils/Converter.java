@@ -40,8 +40,7 @@ public class Converter implements Converters {
         int restarts = 0;
         PodStatus status = statusService.evaluatePod(pod);
         if (containerStatuses != null && !containerStatuses.isEmpty()) {
-            restarts = containerStatuses.stream().filter(Objects::nonNull).map(V1ContainerStatus::getRestartCount)
-                    .filter(Objects::nonNull).mapToInt(Integer::intValue).sum();
+            restarts = containerStatuses.stream().filter(Objects::nonNull).map(V1ContainerStatus::getRestartCount).mapToInt(Integer::intValue).sum();
 
         }
 
@@ -50,18 +49,13 @@ public class Converter implements Converters {
 
     public IngressDTO toIngressDTO(V1Ingress ingress) {
         String name = ingress.getMetadata().getName();
-        log.info("Ingress {}", ingress);
 
-        if (ingress.getSpec() == null || ingress.getSpec().getRules() == null) {
+        if (ingress.getStatus() == null || ingress.getStatus().getLoadBalancer() == null || ingress.getStatus().getLoadBalancer().getIngress() == null) {
             return new IngressDTO(name, List.of());
         }
 
-        boolean https = ingress.getSpec().getTls() != null && !ingress.getSpec().getTls().isEmpty();
-
-        String scheme = https ? "https" : "http";
-
-        List<String> urls = ingress.getSpec().getRules().stream().map(V1IngressRule::getHost).filter(Objects::nonNull)
-                .map(host -> scheme + "://" + host).toList();
+        List<String> urls = ingress.getStatus().getLoadBalancer().getIngress().stream().map(V1IngressLoadBalancerIngress::getHostname).filter(Objects::nonNull)
+                .map(host -> "https://" + host).toList();
 
         return new IngressDTO(name, urls);
     }
