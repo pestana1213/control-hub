@@ -8,12 +8,14 @@ import com.golias.control_hub.domain.application.dto.PodDTO;
 import com.golias.control_hub.domain.application.enums.PodStatus;
 import com.golias.control_hub.domain.application.entities.Application;
 import io.kubernetes.client.openapi.models.*;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Objects;
 
 @Component
+@Slf4j
 public class Converter implements Converters {
 
     private final ApplicationStatusService statusService;
@@ -47,8 +49,8 @@ public class Converter implements Converters {
     }
 
     public IngressDTO toIngressDTO(V1Ingress ingress) {
-
         String name = ingress.getMetadata().getName();
+        log.info("Ingress {}", ingress);
 
         if (ingress.getSpec() == null || ingress.getSpec().getRules() == null) {
             return new IngressDTO(name, List.of());
