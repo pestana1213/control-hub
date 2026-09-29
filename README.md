@@ -78,6 +78,13 @@ Actuator endpoints are exposed for health and metrics:
 - `GET /actuator/metrics`
 - `GET /actuator/prometheus`
 
+Health is also split into two probe groups, so Kubernetes can route traffic without restarting the pod when a dependency is briefly unavailable:
+
+- `GET /actuator/health/liveness` — the process itself is healthy. It tracks the application availability state only, so an unreachable database or a slow cluster never causes a restart loop.
+- `GET /actuator/health/readiness` — the process can serve requests. It requires the database and `kubernetesInformers`, the contributor backed by `KubernetesResourceInformers.hasSynced()`.
+
+`kubernetesInformers` is `DOWN` until every informer cache has synced, which keeps the pod out of the Service during startup instead of letting requests read an empty observed state. Defining a group replaces Spring Boot's default membership rather than extending it, so `readinessState` and `livenessState` are listed explicitly.
+
 Reconciliation metrics cover queue depth, enqueue outcomes, reconciliation duration, retries, worker state and informer synchronization. Operation metrics cover request counts and duration by operation and outcome. See [`docs/reconciliation-metrics.md`](docs/reconciliation-metrics.md) for metric names and PromQL examples.
 
 ## Running locally

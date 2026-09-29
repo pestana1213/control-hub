@@ -10,10 +10,12 @@ Metrics are registered with Micrometer and exposed through the existing `/actuat
 | `control_hub.reconciliation.worker.retries` | Counter | Delayed retries scheduled, excluding duplicate timers for the same key. |
 | `control_hub.reconciliation.worker.retries.pending` | Gauge | Keys with a delayed retry pending. |
 | `control_hub.reconciliation.worker.running` | Gauge | Lifecycle started (1) or stopped (0); may be 1 while waiting for cache sync. |
-| `control_hub.reconciliation.informers.synced` | Gauge | All four informer caches have synced (1), or at least one has not (0). |
+| `control_hub.reconciliation.informers.synced` | Gauge | All five informer caches have synced (1), or at least one has not (0). |
 
 Tags have fixed values; application names and namespaces are not used as metric tags.
 The worker timer excludes queue wait, retry delay, and the scheduled registration job's direct calls to the reconciler. A success means reconciliation returned successfully, including when no matching resources exist. Interruptions thrown from reconciliation count as failed attempts.
+
+The `kubernetesInformers` health contributor on `/actuator/health` reads the same `KubernetesResourceInformers.hasSynced()` state as this gauge, so the endpoint and the metric cannot disagree.
 
 Example PromQL:
 
