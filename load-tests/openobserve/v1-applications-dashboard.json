@@ -1,0 +1,1162 @@
+{
+  "version": 8,
+  "dashboardId": "7495906826580393984",
+  "title": "Control Hub - v1/applications under load",
+  "description": "Read path for GET /v1/applications. Correlates request rate, latency and errors from the server's own HTTP metrics with JVM and reconciliation state, so a latency rise can be attributed rather than guessed at.",
+  "role": "",
+  "owner": "joaonogueiracontacto@gmail.com",
+  "created": "2026-08-19T18:17:34.617Z",
+  "tabs": [
+    {
+      "tabId": "load",
+      "name": "Load test",
+      "panels": [
+        {
+          "id": "v1_app_throughput",
+          "type": "line",
+          "title": "v1/applications request rate",
+          "description": "Server-side request rate for the endpoint under test, split by HTTP status. This is the load actually reaching Control Hub, independent of any k6 counter.",
+          "config": {
+            "show_legends": true,
+            "legends_position": "bottom",
+            "unit": "custom",
+            "unit_custom": "req/s",
+            "decimals": 2,
+            "base_map": null,
+            "map_view": null
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "sum by (status) (rate(http_server_requests_seconds_count{uri=\"/v1/applications\"}[1m]))",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "http_server_requests_seconds_count",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "HTTP {{status}}",
+                "query_label": ""
+              },
+              "queryType": "promql"
+            }
+          ],
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "w": 96,
+            "h": 14,
+            "i": 1
+          },
+          "htmlContent": "",
+          "markdownContent": "",
+          "customChartContent": "option = {};"
+        },
+        {
+          "id": "v1_app_error_rate",
+          "type": "line",
+          "title": "v1/applications error ratio",
+          "description": "Share of requests to the endpoint that did not return 200. A single stale application row fails the whole list, so this is a whole-endpoint failure signal rather than a per-item one.",
+          "config": {
+            "show_legends": true,
+            "legends_position": "bottom",
+            "unit": "custom",
+            "unit_custom": "ratio",
+            "decimals": 4,
+            "base_map": null,
+            "map_view": null
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "1 - (sum(rate(http_server_requests_seconds_count{uri=\"/v1/applications\",status=\"200\"}[1m])) / clamp_min(sum(rate(http_server_requests_seconds_count{uri=\"/v1/applications\"}[1m])), 0.000001))",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "http_server_requests_seconds_count",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "non-200 ratio",
+                "query_label": ""
+              },
+              "queryType": "promql"
+            }
+          ],
+          "layout": {
+            "x": 96,
+            "y": 0,
+            "w": 96,
+            "h": 14,
+            "i": 2
+          },
+          "htmlContent": "",
+          "markdownContent": "",
+          "customChartContent": "option = {};"
+        },
+        {
+          "id": "v1_app_latency",
+          "type": "line",
+          "title": "v1/applications latency, mean and max",
+          "description": "Mean and worst-case server-side duration for the endpoint. Mean is the sum/count rate ratio; max comes from the timer's published maximum.",
+          "config": {
+            "show_legends": true,
+            "legends_position": "bottom",
+            "unit": "seconds",
+            "unit_custom": "",
+            "decimals": 3,
+            "base_map": null,
+            "map_view": null
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "sum(rate(http_server_requests_seconds_sum{uri=\"/v1/applications\"}[1m])) / clamp_min(sum(rate(http_server_requests_seconds_count{uri=\"/v1/applications\"}[1m])), 0.000001)",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "http_server_requests_seconds_sum",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "mean",
+                "query_label": ""
+              },
+              "queryType": "promql"
+            },
+            {
+              "query": "max(http_server_requests_seconds_max{uri=\"/v1/applications\"})",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "http_server_requests_seconds_max",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "max",
+                "query_label": ""
+              },
+              "queryType": "promql"
+            }
+          ],
+          "layout": {
+            "x": 0,
+            "y": 14,
+            "w": 96,
+            "h": 14,
+            "i": 3
+          },
+          "htmlContent": "",
+          "markdownContent": "",
+          "customChartContent": "option = {};"
+        },
+        {
+          "id": "v1_app_read_path_failures",
+          "type": "line",
+          "title": "Read path failures",
+          "description": "Failures recorded by GetApplications, split by the method that failed. enrichWithK8sInfo is the one to watch: it throws when the informer cache has no snapshot for a registered application, which fails the entire list response.",
+          "config": {
+            "show_legends": true,
+            "legends_position": "bottom",
+            "unit": "custom",
+            "unit_custom": "errors/s",
+            "decimals": 3,
+            "base_map": null,
+            "map_view": null
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "sum by (method) (rate(control_hub_failure_total{method=~\"getRegisteredApplications|enrichWithK8sInfo\"}[1m]))",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "control_hub_failure_total",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "{{method}}",
+                "query_label": ""
+              },
+              "queryType": "promql"
+            }
+          ],
+          "layout": {
+            "x": 96,
+            "y": 14,
+            "w": 96,
+            "h": 14,
+            "i": 4
+          },
+          "htmlContent": "",
+          "markdownContent": "",
+          "customChartContent": "option = {};"
+        },
+        {
+          "id": "v1_app_p95",
+          "type": "line",
+          "title": "v1/applications p95 (needs histograms enabled)",
+          "description": "Empty until management.metrics.distribution.percentiles-histogram.http.server.requests=true is added to application.properties. Spring Boot does not publish latency buckets for HTTP requests by default, so a true p95 cannot be derived from sum and count alone. The mean panel above is what is available without that change.",
+          "config": {
+            "show_legends": true,
+            "legends_position": "bottom",
+            "unit": "seconds",
+            "unit_custom": "",
+            "decimals": 3,
+            "base_map": null,
+            "map_view": null
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{uri=\"/v1/applications\"}[1m])))",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "http_server_requests_seconds_bucket",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "p95",
+                "query_label": ""
+              },
+              "queryType": "promql"
+            }
+          ],
+          "layout": {
+            "x": 0,
+            "y": 28,
+            "w": 96,
+            "h": 14,
+            "i": 5
+          },
+          "htmlContent": "",
+          "markdownContent": "",
+          "customChartContent": "option = {};"
+        },
+        {
+          "id": "v1_app_discovery_latency",
+          "type": "line",
+          "title": "Discovery latency for the read path",
+          "description": "Mean duration of the getRegisteredApplications timer, which wraps the whole endpoint body including the per-application health evaluation. This is the closest server-side proxy for the cost of GET /v1/applications.",
+          "config": {
+            "show_legends": true,
+            "legends_position": "bottom",
+            "unit": "seconds",
+            "unit_custom": "",
+            "decimals": 3,
+            "base_map": null,
+            "map_view": null
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "sum by (resource) (rate(control_hub_kubernetes_discovery_seconds_sum{resource=\"getRegisteredApplications\"}[1m])) / clamp_min(sum by (resource) (rate(control_hub_kubernetes_discovery_seconds_count{resource=\"getRegisteredApplications\"}[1m])), 0.000001)",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "control_hub_kubernetes_discovery_seconds_sum",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "{{resource}}",
+                "query_label": ""
+              },
+              "queryType": "promql"
+            }
+          ],
+          "layout": {
+            "x": 96,
+            "y": 28,
+            "w": 96,
+            "h": 14,
+            "i": 6
+          },
+          "htmlContent": "",
+          "markdownContent": "",
+          "customChartContent": "option = {};"
+        }
+      ]
+    },
+    {
+      "tabId": "saturation",
+      "name": "Saturation",
+      "panels": [
+        {
+          "id": "recon_queue_depth",
+          "type": "line",
+          "title": "Reconciliation queue depth",
+          "description": "Keys waiting in the queue, excluding work in progress. Rising depth under load means the reconciler is falling behind the informer event stream. Flat latency alongside a rising queue is normal for this endpoint, because reads are served from the cache rather than the queue.",
+          "config": {
+            "show_legends": true,
+            "legends_position": "bottom",
+            "unit": "none",
+            "unit_custom": "",
+            "decimals": 0,
+            "base_map": null,
+            "map_view": null
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "max(control_hub_reconciliation_queue_size)",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "control_hub_reconciliation_queue_size",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "queue depth",
+                "query_label": ""
+              },
+              "queryType": "promql"
+            }
+          ],
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "w": 96,
+            "h": 14,
+            "i": 1
+          },
+          "htmlContent": "",
+          "markdownContent": "",
+          "customChartContent": "option = {};"
+        },
+        {
+          "id": "recon_worker_duration",
+          "type": "line",
+          "title": "Reconciliation worker duration",
+          "description": "Mean duration of worker attempts by outcome, including the database transaction that completes each reconciliation.",
+          "config": {
+            "show_legends": true,
+            "legends_position": "bottom",
+            "unit": "seconds",
+            "unit_custom": "",
+            "decimals": 3,
+            "base_map": null,
+            "map_view": null
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "sum by (result) (rate(control_hub_reconciliation_worker_duration_seconds_sum[1m])) / clamp_min(sum by (result) (rate(control_hub_reconciliation_worker_duration_seconds_count[1m])), 0.000001)",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "control_hub_reconciliation_worker_duration_seconds_sum",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "{{result}}",
+                "query_label": ""
+              },
+              "queryType": "promql"
+            }
+          ],
+          "layout": {
+            "x": 96,
+            "y": 0,
+            "w": 96,
+            "h": 14,
+            "i": 2
+          },
+          "htmlContent": "",
+          "markdownContent": "",
+          "customChartContent": "option = {};"
+        },
+        {
+          "id": "recon_enqueue_outcomes",
+          "type": "line",
+          "title": "Enqueue outcomes",
+          "description": "accepted, duplicate and full. A non-zero full count means the queue rejected work because it hit its capacity limit, which is a real back-pressure signal and means informer events are being dropped.",
+          "config": {
+            "show_legends": true,
+            "legends_position": "bottom",
+            "unit": "custom",
+            "unit_custom": "ops/s",
+            "decimals": 3,
+            "base_map": null,
+            "map_view": null
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "sum by (result) (rate(control_hub_reconciliation_queue_enqueue_total[1m]))",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "control_hub_reconciliation_queue_enqueue_total",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "{{result}}",
+                "query_label": ""
+              },
+              "queryType": "promql"
+            }
+          ],
+          "layout": {
+            "x": 0,
+            "y": 14,
+            "w": 96,
+            "h": 14,
+            "i": 3
+          },
+          "htmlContent": "",
+          "markdownContent": "",
+          "customChartContent": "option = {};"
+        },
+        {
+          "id": "recon_retries",
+          "type": "line",
+          "title": "Retries and pending retry keys",
+          "description": "Delayed retries scheduled, and how many keys still have one pending. A rising pending count during a load test means the reconciler is retrying work it could not complete, usually a transient database or API server error.",
+          "config": {
+            "show_legends": true,
+            "legends_position": "bottom",
+            "unit": "custom",
+            "unit_custom": "ops/s",
+            "decimals": 3,
+            "base_map": null,
+            "map_view": null
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "sum(rate(control_hub_reconciliation_worker_retries_total[1m]))",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "control_hub_reconciliation_worker_retries_total",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "retries scheduled",
+                "query_label": ""
+              },
+              "queryType": "promql"
+            },
+            {
+              "query": "max(control_hub_reconciliation_worker_retries_pending)",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "control_hub_reconciliation_worker_retries_pending",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "pending",
+                "query_label": ""
+              },
+              "queryType": "promql"
+            }
+          ],
+          "layout": {
+            "x": 96,
+            "y": 14,
+            "w": 96,
+            "h": 14,
+            "i": 4
+          },
+          "htmlContent": "",
+          "markdownContent": "",
+          "customChartContent": "option = {};"
+        },
+        {
+          "id": "recon_health",
+          "type": "line",
+          "title": "Reconciler and informer state",
+          "description": "Worker running and all informer caches synced, both 0 or 1. The synced gauge sits at 0 until all five caches have caught up, and while it is 0 the read path has no observed state and returns 500.",
+          "config": {
+            "show_legends": true,
+            "legends_position": "bottom",
+            "unit": "none",
+            "unit_custom": "",
+            "decimals": 0,
+            "base_map": null,
+            "map_view": null
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "max(control_hub_reconciliation_worker_running)",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "control_hub_reconciliation_worker_running",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "worker running",
+                "query_label": ""
+              },
+              "queryType": "promql"
+            },
+            {
+              "query": "max(control_hub_reconciliation_informers_synced)",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "control_hub_reconciliation_informers_synced",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "informers synced",
+                "query_label": ""
+              },
+              "queryType": "promql"
+            }
+          ],
+          "layout": {
+            "x": 0,
+            "y": 28,
+            "w": 96,
+            "h": 14,
+            "i": 5
+          },
+          "htmlContent": "",
+          "markdownContent": "",
+          "customChartContent": "option = {};"
+        },
+        {
+          "id": "exceptions_by_type",
+          "type": "line",
+          "title": "Handled exceptions by type",
+          "description": "application covers the read path, kubernetes covers the operations API. Under load on v1/applications, a rise in application means the read path is throwing.",
+          "config": {
+            "show_legends": true,
+            "legends_position": "bottom",
+            "unit": "custom",
+            "unit_custom": "errors/s",
+            "decimals": 3,
+            "base_map": null,
+            "map_view": null
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "sum by (type) (rate(control_hub_exceptions_total[1m]))",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "control_hub_exceptions_total",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "{{type}}",
+                "query_label": ""
+              },
+              "queryType": "promql"
+            }
+          ],
+          "layout": {
+            "x": 96,
+            "y": 28,
+            "w": 96,
+            "h": 14,
+            "i": 6
+          },
+          "htmlContent": "",
+          "markdownContent": "",
+          "customChartContent": "option = {};"
+        }
+      ]
+    },
+    {
+      "tabId": "runtime",
+      "name": "JVM and resources",
+      "panels": [
+        {
+          "id": "jvm_heap_used",
+          "type": "line",
+          "title": "JVM heap used",
+          "description": "Bytes of heap in use. The single most useful panel during a soak test: a peak that never settles points at a retention problem in the read path, which allocates a DTO per application per request.",
+          "config": {
+            "show_legends": true,
+            "legends_position": "bottom",
+            "unit": "bytes",
+            "unit_custom": "",
+            "decimals": 2,
+            "base_map": null,
+            "map_view": null
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "sum(jvm_memory_used_bytes{area=\"heap\"})",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "jvm_memory_used_bytes",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "heap used",
+                "query_label": ""
+              },
+              "queryType": "promql"
+            },
+            {
+              "query": "sum(jvm_memory_max_bytes{area=\"heap\"})",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "jvm_memory_max_bytes",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "heap max",
+                "query_label": ""
+              },
+              "queryType": "promql"
+            }
+          ],
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "w": 96,
+            "h": 14,
+            "i": 1
+          },
+          "htmlContent": "",
+          "markdownContent": "",
+          "customChartContent": "option = {};"
+        },
+        {
+          "id": "jvm_threads",
+          "type": "line",
+          "title": "JVM live threads",
+          "description": "Live thread count. The application uses virtual threads for operation processing, so a slow climb here under load is worth investigating even when heap is flat.",
+          "config": {
+            "show_legends": true,
+            "legends_position": "bottom",
+            "unit": "none",
+            "unit_custom": "",
+            "decimals": 0,
+            "base_map": null,
+            "map_view": null
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "max(jvm_threads_live)",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "jvm_threads_live",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "threads live",
+                "query_label": ""
+              },
+              "queryType": "promql"
+            },
+            {
+              "query": "max(jvm_threads_daemon)",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "jvm_threads_daemon",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "daemon",
+                "query_label": ""
+              },
+              "queryType": "promql"
+            }
+          ],
+          "layout": {
+            "x": 96,
+            "y": 0,
+            "w": 96,
+            "h": 14,
+            "i": 2
+          },
+          "htmlContent": "",
+          "markdownContent": "",
+          "customChartContent": "option = {};"
+        },
+        {
+          "id": "jvm_gc_pause",
+          "type": "line",
+          "title": "GC pause, max per collection",
+          "description": "Longest pause recorded for each collection. Rising pauses alongside flat heap usually means allocation rate rather than a leak, which matters here because the read path allocates per application per request.",
+          "config": {
+            "show_legends": true,
+            "legends_position": "bottom",
+            "unit": "seconds",
+            "unit_custom": "",
+            "decimals": 3,
+            "base_map": null,
+            "map_view": null
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "max(jvm_gc_pause_seconds_max)",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "jvm_gc_pause_seconds_max",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "max pause",
+                "query_label": ""
+              },
+              "queryType": "promql"
+            }
+          ],
+          "layout": {
+            "x": 0,
+            "y": 14,
+            "w": 96,
+            "h": 14,
+            "i": 3
+          },
+          "htmlContent": "",
+          "markdownContent": "",
+          "customChartContent": "option = {};"
+        },
+        {
+          "id": "jvm_gc_overhead",
+          "type": "line",
+          "title": "GC overhead and allocation rate",
+          "description": "Time spent in GC as a proportion of total, and bytes allocated per second. Together these distinguish high allocation rate from a genuine retention problem.",
+          "config": {
+            "show_legends": true,
+            "legends_position": "bottom",
+            "unit": "percent-1",
+            "unit_custom": "",
+            "decimals": 4,
+            "base_map": null,
+            "map_view": null
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "avg(rate(jvm_gc_pause_seconds_sum[1m]))",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "jvm_gc_pause_seconds_sum",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "GC time ratio",
+                "query_label": ""
+              },
+              "queryType": "promql"
+            },
+            {
+              "query": "sum(rate(jvm_gc_memory_allocated_bytes_total[1m]))",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "jvm_gc_memory_allocated_bytes_total",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "B/s allocated",
+                "query_label": ""
+              },
+              "queryType": "promql"
+            }
+          ],
+          "layout": {
+            "x": 96,
+            "y": 14,
+            "w": 96,
+            "h": 14,
+            "i": 4
+          },
+          "htmlContent": "",
+          "markdownContent": "",
+          "customChartContent": "option = {};"
+        },
+        {
+          "id": "process_resources",
+          "type": "line",
+          "title": "CPU and file descriptors",
+          "description": "Process CPU as a fraction of one core, and open file descriptors. FDs climbing towards the process limit during a long test usually means a connection pool is not being reused, which would show up as latency too.",
+          "config": {
+            "show_legends": true,
+            "legends_position": "bottom",
+            "unit": "percent-1",
+            "unit_custom": "",
+            "decimals": 2,
+            "base_map": null,
+            "map_view": null
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "avg(process_cpu_usage)",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "process_cpu_usage",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "CPU",
+                "query_label": ""
+              },
+              "queryType": "promql"
+            },
+            {
+              "query": "sum(process_files_open_files)",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "process_files_open_files",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "open FDs",
+                "query_label": ""
+              },
+              "queryType": "promql"
+            }
+          ],
+          "layout": {
+            "x": 0,
+            "y": 28,
+            "w": 96,
+            "h": 14,
+            "i": 5
+          },
+          "htmlContent": "",
+          "markdownContent": "",
+          "customChartContent": "option = {};"
+        },
+        {
+          "id": "db_pool",
+          "type": "line",
+          "title": "Database connection pool",
+          "description": "HikariCP connections in use against the pool maximum. GET /v1/applications calls ApplicationRepo.findAll() on every request with no caching, so pool exhaustion under load is a plausible bottleneck and this panel would show it before latency moves.",
+          "config": {
+            "show_legends": true,
+            "legends_position": "bottom",
+            "unit": "none",
+            "unit_custom": "",
+            "decimals": 0,
+            "base_map": null,
+            "map_view": null
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "max(hikaricp_connections_active)",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "hikaricp_connections_active",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "in use",
+                "query_label": ""
+              },
+              "queryType": "promql"
+            },
+            {
+              "query": "max(hikaricp_connections_max)",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "hikaricp_connections_max",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "pool max",
+                "query_label": ""
+              },
+              "queryType": "promql"
+            },
+            {
+              "query": "sum(rate(hikaricp_connections_timeout_total[1m]))",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "hikaricp_connections_timeout_total",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "timeouts/s",
+                "query_label": ""
+              },
+              "queryType": "promql"
+            }
+          ],
+          "layout": {
+            "x": 96,
+            "y": 28,
+            "w": 96,
+            "h": 14,
+            "i": 6
+          },
+          "htmlContent": "",
+          "markdownContent": "",
+          "customChartContent": "option = {};"
+        }
+      ]
+    }
+  ],
+  "variables": {
+    "list": [],
+    "showDynamicFilters": true
+  },
+  "defaultDatetimeDuration": {
+    "type": "relative",
+    "relativeTimePeriod": "1h"
+  }
+}
