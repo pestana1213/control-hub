@@ -75,7 +75,8 @@ public class GetApplications {
         } catch (Exception e) {
             enrichWithK8sInfoFailures.increment();
             log.error("Error fetching k8s info for app {} in namespace {}", app.name(), app.namespace(), e);
-            throw new ApplicationException("Failed to enrich with kubernetes info", e);
+            // throw new ApplicationException("Failed to enrich with kubernetes info", e);
+            return null;
         }
     }
 
