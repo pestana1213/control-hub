@@ -2,7 +2,9 @@ package com.golias.control_hub.domain.kubernetes.config;
 
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.util.Config;
+import io.kubernetes.client.util.ProxyContentTypeRequestBody;
 import okhttp3.Request;
+import okhttp3.RequestBody;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -23,7 +25,15 @@ public class KubernetesConfig {
         client.setHttpClient(client.getHttpClient().newBuilder().addInterceptor(chain -> {
             Request request = chain.request();
             if (isDeploymentPatch(request)) {
-                request = request.newBuilder().header("Content-Type", STRATEGIC_MERGE_PATCH).build();
+                // client-java 26 sends every PATCH as application/json, which the API server rejects with 415.
+                // Setting the header here is not enough: OkHttp's BridgeInterceptor rewrites Content-Type from
+                // the body, so the body itself has to report the patch media type.
+                RequestBody body = request.body();
+                if (body != null) {
+                    request = request.newBuilder()
+                            .method("PATCH", new ProxyContentTypeRequestBody(body, STRATEGIC_MERGE_PATCH))
+                            .build();
+                }
             }
             return chain.proceed(request);
         }).build());
