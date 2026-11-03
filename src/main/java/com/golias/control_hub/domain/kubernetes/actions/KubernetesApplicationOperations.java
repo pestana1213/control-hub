@@ -6,6 +6,7 @@ import io.kubernetes.client.custom.V1Patch;
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.apis.AppsV1Api;
+import io.kubernetes.client.openapi.models.V1Deployment;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.Objects;
+import java.util.function.LongSupplier;
 
 @Slf4j
 @Service
@@ -43,7 +45,7 @@ public class KubernetesApplicationOperations implements KubernetesOperations {
     }
 
     @Override
-    public void restart(String namespace, String name) {
+    public long restart(String namespace, String name) {
         Timer.Sample sample = Timer.start(meterRegistry);
 
         try {
@@ -55,9 +57,12 @@ public class KubernetesApplicationOperations implements KubernetesOperations {
                     """.formatted(RESTARTED_AT_ANNOTATION, Instant.now());
 
             log.info("Requesting restart for deployment {} in namespace {}", name, namespace);
-            appsV1Api.patchNamespacedDeployment(name, namespace, new V1Patch(patch)).execute();
+            long generation = generationOf(
+                    appsV1Api.patchNamespacedDeployment(name, namespace, new V1Patch(patch)).execute());
             successfulRestarts.increment();
-            log.info("Restart requested for deployment {} in namespace {}", name, namespace);
+            log.info("Restart requested for deployment {} in namespace {}, awaiting generation {}", name, namespace,
+                    generation);
+            return generation;
         } catch (ApiException e) {
             failedRestarts.increment();
             log.error("Failed to restart deployment {} in namespace {} (Kubernetes status: {}, response: {})", name,
@@ -73,16 +78,16 @@ public class KubernetesApplicationOperations implements KubernetesOperations {
     }
 
     @Override
-    public void scale(String namespace, String name, int replicas) {
-        execute("scale", namespace, name,
+    public long scale(String namespace, String name, int replicas) {
+        return execute("scale", namespace, name,
                 () -> patch(namespace, name, "{\"spec\":{\"replicas\":" + replicas + "}}", "scale"));
     }
 
     @Override
-    public void deploy(String namespace, String name, String image) {
-        execute("deploy", namespace, name, () -> {
+    public long deploy(String namespace, String name, String image) {
+        return execute("deploy", namespace, name, () -> {
             requireNonBlank(image, "image");
-            patch(namespace, name, "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"" + name
+            return patch(namespace, name, "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"" + name
                     + "\",\"image\":\"" + image.replace("\"", "\\\"") + "\"}]}}}}", "deploy");
         });
     }
@@ -104,14 +109,15 @@ public class KubernetesApplicationOperations implements KubernetesOperations {
         });
     }
 
-    private void execute(String operation, String namespace, String name, Runnable action) {
+    private long execute(String operation, String namespace, String name, LongSupplier action) {
         Timer.Sample sample = Timer.start(meterRegistry);
         try {
             requireNonBlank(namespace, "namespace");
             requireNonBlank(name, "name");
-            action.run();
+            long generation = action.getAsLong();
             Counter.builder("control_hub.kubernetes.operation.requests").tag("operation", operation)
                     .tag("outcome", "success").register(meterRegistry).increment();
+            return generation;
         } catch (RuntimeException exception) {
             log.error("Unexpected failure executing {} {} in namespace {}", operation,name, namespace, exception);
             Counter.builder("control_hub.kubernetes.operation.requests").tag("operation", operation)
@@ -123,14 +129,24 @@ public class KubernetesApplicationOperations implements KubernetesOperations {
         }
     }
 
-    private void patch(String namespace, String name, String payload, String operation) {
+    private long patch(String namespace, String name, String payload, String operation) {
         try {
             requireNonBlank(namespace, "namespace");
             requireNonBlank(name, "name");
-            appsV1Api.patchNamespacedDeployment(name, namespace, new V1Patch(payload)).execute();
+            return generationOf(appsV1Api.patchNamespacedDeployment(name, namespace, new V1Patch(payload)).execute());
         } catch (ApiException e) {
             throw new KubernetesException("Failed to " + operation + " Kubernetes deployment", e);
         }
+    }
+
+    /** The generation the patch produced, which the rollout is then confirmed against. */
+    private static long generationOf(V1Deployment patched) {
+        Long generation = patched == null || patched.getMetadata() == null ? null
+                : patched.getMetadata().getGeneration();
+        if (generation == null) {
+            throw new KubernetesException("Patched deployment reported no generation to confirm the rollout against");
+        }
+        return generation;
     }
 
     private UnsupportedOperationException unsupported(String operation, String namespace, String name,

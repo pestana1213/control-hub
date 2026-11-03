@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import jakarta.annotation.PreDestroy;
 
 import java.time.ZonedDateTime;
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +26,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
 
 @Service
@@ -38,19 +40,22 @@ public class OperationExecutor {
     private final MeterRegistry meterRegistry;
     private final Map<OperationType, OperationHandler> handlers;
     private final KubernetesObservedState observedState;
-    private final String allowedNamespaces;
+    private final Set<String> allowedNamespaces;
+    private final Set<String> allowedApplications;
     private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
     private final ConcurrentHashMap<java.util.UUID, Object> applicationLocks = new ConcurrentHashMap<>();
 
     public OperationExecutor(ApplicationPort applicationPort, OperationRepository operationRepository,
             MeterRegistry meterRegistry, List<OperationHandler> handlers, KubernetesObservedState observedState,
-            @Value("${control.hub.operations.allowed-namespaces:*}") String allowedNamespaces) {
+            @Value("${control.hub.operations.allowed-namespaces:*}") String allowedNamespaces,
+            @Value("${control.hub.operations.allowed-applications:*}") String allowedApplications) {
         this.applicationPort = applicationPort;
         this.operationRepository = operationRepository;
         this.meterRegistry = meterRegistry;
         this.handlers = indexHandlers(handlers);
         this.observedState = observedState;
-        this.allowedNamespaces = allowedNamespaces;
+        this.allowedNamespaces = parseAllowlist(allowedNamespaces);
+        this.allowedApplications = parseAllowlist(allowedApplications);
     }
 
     public Operation executeOperation(OperationRequest request) {
@@ -115,10 +120,25 @@ public class OperationExecutor {
                 || request.application().isBlank()) {
             throw new IllegalArgumentException("namespace and application are required");
         }
-        if (!"*".equals(allowedNamespaces) && Set.of(allowedNamespaces.split(",")).stream().map(String::trim)
-                .noneMatch(request.namespace()::equals)) {
+        if (!isAllowed(allowedNamespaces, request.namespace())) {
             throw new IllegalArgumentException("Namespace is not allowed: " + request.namespace());
         }
+        if (!isAllowed(allowedApplications, request.application())) {
+            throw new IllegalArgumentException("Application is not allowed: " + request.application());
+        }
+    }
+
+    /** An empty allowlist permits every value, which is what {@code *} configures. */
+    private static Set<String> parseAllowlist(String configured) {
+        if (configured == null || configured.isBlank() || "*".equals(configured.trim())) {
+            return Set.of();
+        }
+        return Arrays.stream(configured.split(",")).map(String::trim).filter(value -> !value.isEmpty())
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
+    private static boolean isAllowed(Set<String> allowlist, String value) {
+        return allowlist.isEmpty() || allowlist.contains(value);
     }
 
     @PreDestroy

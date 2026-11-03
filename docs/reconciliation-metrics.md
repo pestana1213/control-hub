@@ -31,3 +31,24 @@ rate(control_hub_reconciliation_worker_duration_seconds_count{result="success"}[
 # Enqueue attempts rejected because the queue was full
 increase(control_hub_reconciliation_queue_enqueue_total{result="full"}[5m])
 ```
+
+## Rollout confirmation
+
+| Micrometer name | Type | Meaning |
+| --- | --- | --- |
+| `control_hub.kubernetes.rollout.requests` | Counter | Rollout confirmations by `outcome`: `ready`, `timeout` or `interrupted`. |
+| `control_hub.kubernetes.rollout.duration` | Timer | Time spent waiting for a patched Deployment to become ready, by `outcome`. |
+
+The timer measures the wait, not the patch, so it is bounded by `control.hub.operations.rollout-timeout`. A `timeout` outcome always corresponds to an operation recorded as `ERROR`.
+
+```promql
+# Share of restarts that never became ready
+increase(control_hub_kubernetes_rollout_requests_total{outcome="timeout"}[1h])
+/
+increase(control_hub_kubernetes_rollout_requests_total[1h])
+
+# Mean time to a confirmed rollout, in seconds
+rate(control_hub_kubernetes_rollout_duration_seconds_sum{outcome="ready"}[15m])
+/
+rate(control_hub_kubernetes_rollout_duration_seconds_count{outcome="ready"}[15m])
+```

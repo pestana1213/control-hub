@@ -35,8 +35,71 @@ Alongside the status and reasons, health carries the observed spec and signals n
 
 - `GET /v1/applications` — every registered application with its observed state.
 - `GET /v1/applications/{id}` — a single application, or `404` when it is not registered.
+- `GET /v1/applications/{id}/events?limit=20` — the recorded health transitions, newest first.
+- `PUT /v1/applications/{id}/desired-state` — declare the spec an application should have.
+- `GET /v1/applications/{id}/desired-state` — read it back, or `404` when nothing is declared.
+- `DELETE /v1/applications/{id}/desired-state` — stop managing the application.
+- `GET /v1/applications/{id}/diff` — drift between the declared spec and the cluster.
 
 An application whose Kubernetes state cannot be read is returned with `UNKNOWN` health and an `OBSERVED_STATE_UNAVAILABLE` reason rather than being omitted.
+
+### Health transitions
+
+The reconciler records a transition whenever an application's health changes, which is what answers "what happened?" without storing every Kubernetes event indefinitely:
+
+```json
+[
+  {
+    "from": "HEALTHY",
+    "to": "DEGRADED",
+    "reasonCode": "POD_CRASH_LOOP",
+    "message": "Pod/production/api-7f/api: Container repeatedly fails to start",
+    "occurredAt": "2026-11-03T10:15:30Z"
+  }
+]
+```
+
+A row is written only when the status *or* its most severe reason changes, so `DEGRADED (REPLICA_NOT_READY)` becoming `DEGRADED (POD_CRASH_LOOP)` is recorded while a hundred unchanged reconciliations are not. The reconciler runs on every informer event, so this gate is what keeps a single restart from writing hundreds of near-identical rows.
+
+These are Control Hub's own transitions. They are not the raw Kubernetes events, which remain available inline as the `events` field of an application.
+
+History is pruned on a schedule, and transitions are removed with their application when it is deregistered. An application retained for its operation history records a transition to `UNKNOWN` once it disappears from the cluster, so its last known state is never a stale `HEALTHY`.
+
+### Desired state and drift
+
+Desired state is deliberately minimal: `image` and `replicas`. A field left null is not managed and never reports drift, so an application can have its replica count governed while its image is left to whatever is deployed.
+
+```json
+PUT /v1/applications/{id}/desired-state
+{ "image": "ghcr.io/golias/task-manager:1.4.2", "replicas": 2 }
+```
+
+`GET /v1/applications/{id}/diff` then answers:
+
+```json
+{
+  "name": "task-manager",
+  "namespace": "production",
+  "status": "DRIFTED",
+  "desired": { "image": "ghcr.io/golias/task-manager:1.4.2", "replicas": 2 },
+  "observed": { "image": "ghcr.io/golias/task-manager:1.4.1", "replicas": 1 },
+  "drift": ["IMAGE", "REPLICAS"],
+  "observedAt": "2026-11-03T10:15:30Z"
+}
+```
+
+`status` separates the four cases a bare drift list cannot:
+
+| Status | Meaning |
+| --- | --- |
+| `IN_SYNC` | Every managed field matches what is running. |
+| `DRIFTED` | At least one managed field differs; `drift` names which. |
+| `UNMANAGED` | No desired state declared, so there is nothing to compare. |
+| `UNOBSERVED` | A spec is declared but no Deployment is visible, so drift is unknown rather than absent. |
+
+The observed side is read by the same `ObservedSpecs` rule used for `ApplicationHealth.image` and for `DEPLOY`, so health, drift and deployment never disagree about which container is the application's.
+
+**Nothing is reconciled.** The diff is reporting only, and `SYNC` remains unimplemented. Declaring a desired state does not change the cluster; closing the loop needs its own safety rules first.
 
 ## Operations API
 
@@ -77,7 +140,19 @@ Deploying an image requires `image`:
 
 The request returns `202 Accepted` with an operation record. Processing happens asynchronously in a virtual thread. Poll `GET /v1/operations/{id}` to follow the operation through `PENDING`, `RUNNING`, `COMPLETED` or `ERROR`.
 
-Before accepting an operation, Control Hub validates that the application is registered, that its Kubernetes state has been discovered, that the namespace is allowed, and that no other operation is active for the same application. Operations are persisted with their type, status, request time, start time, completion time and error message. Validation and Kubernetes execution failures are recorded as `ERROR`.
+`RESTART`, `SCALE` and `DEPLOY` are confirmed, not fire-and-forget. Each patch returns the Deployment generation it produced, and the operation stays `RUNNING` until that exact revision has been observed with every replica ready. Confirming the generation from the patch response rather than reading it beforehand is what stops a rollout being accepted against the previous revision.
+
+An operation that does not converge within `control.hub.operations.rollout-timeout` is recorded as `ERROR` with the observed reasons, so the record explains the failure:
+
+```
+Rollout of production/api did not become ready within 180s: REPLICA_NOT_READY
+Deployment/production/api (1 of 2 replicas ready); POD_CRASH_LOOP
+Pod/production/api-7f/api (Container repeatedly fails to start)
+```
+
+The wait polls the observed state the informers already maintain rather than the API server, so it costs no extra API traffic. It fails immediately when the informer caches have not synced, rather than timing out misleadingly.
+
+Before accepting an operation, Control Hub validates that the application is registered, that its Kubernetes state has been discovered, that the namespace and application are both allowed, and that no other operation is active for the same application. Operations are persisted with their type, status, request time, start time, completion time and error message. Validation and Kubernetes execution failures are recorded as `ERROR`.
 
 `ROLLBACK` accepts a `revision` field. The request and operation history are modelled, but applying Kubernetes revision history still needs to be completed. `SYNC` likewise requires a desired-state source to be connected.
 
@@ -113,6 +188,18 @@ docker compose up -d
 ./mvnw spring-boot:run
 ```
 
+Operation behaviour is configured with:
+
+| Property | Default | Meaning |
+| --- | --- | --- |
+| `control.hub.operations.allowed-namespaces` | `*` | Comma-separated namespaces that may be operated on; `*` allows every namespace. |
+| `control.hub.operations.allowed-applications` | `*` | Comma-separated application names that may be operated on. |
+| `control.hub.operations.rollout-timeout` | `180s` | How long an operation waits for its revision to become ready before failing. |
+| `control.hub.operations.rollout-poll-interval` | `1s` | How often the observed state is checked while waiting. |
+| `control.hub.applications.status-events.retention` | `14d` | How long health transitions are kept before being pruned. |
+| `control.hub.applications.status-events.purge-interval` | `1h` | How often the pruning job runs. |
+| `control.hub.applications.status-events.max-returned` | `50` | Hard cap on transitions returned by the events endpoint. |
+
 Liquibase creates and updates the PostgreSQL schema on startup. Local database settings are in `src/main/resources/application.properties`; use environment-specific configuration elsewhere.
 
 Run tests with:
@@ -125,4 +212,4 @@ Run tests with:
 
 The current deployment is designed for one active Control Hub pod. The informer caches, reconciliation queue and observed-state store are local to the process. Running multiple pods requires shared observed state, a durable queue or leader election, and idempotent coordination for database registration and operations.
 
-Desired state is the next control-plane step: introduce the desired representation and diff workflow before applying changes automatically. `SYNC`, `DEPLOY` and `ROLLBACK` should only become fully mutating workflows once that source and its safety rules are defined.
+Desired state is declared through the API and compared on demand. Automatic reconciliation is the next control-plane step and is deliberately absent: `SYNC` stays unimplemented, and applying a diff should only become a workflow once its safety rules, approval model and rollback path are defined. `ROLLBACK` still needs Kubernetes revision history.

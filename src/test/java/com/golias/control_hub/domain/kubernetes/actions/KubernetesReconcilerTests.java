@@ -1,10 +1,15 @@
 package com.golias.control_hub.domain.kubernetes.actions;
 
 import com.golias.control_hub.domain.kubernetes.dto.ApplicationKey;
+import com.golias.control_hub.domain.application.action.ApplicationStatusEventRecorder;
+import com.golias.control_hub.domain.application.action.ApplicationStatusService;
 import com.golias.control_hub.domain.application.entities.Application;
+import com.golias.control_hub.domain.application.enums.ApplicationStatus;
 import com.golias.control_hub.domain.application.repository.ApplicationRepo;
 import com.golias.control_hub.domain.kubernetes.ports.KubernetesObservedState;
 import io.kubernetes.client.openapi.models.V1Deployment;
+import io.kubernetes.client.openapi.models.V1DeploymentSpec;
+import io.kubernetes.client.openapi.models.V1DeploymentStatus;
 import io.kubernetes.client.openapi.models.V1Ingress;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1Pod;
@@ -15,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -24,7 +30,9 @@ class KubernetesReconcilerTests {
     private final KubernetesResourceInformers informers = mock(KubernetesResourceInformers.class, RETURNS_DEEP_STUBS);
     private final ApplicationRepo applicationRepo = mock(ApplicationRepo.class);
     private final KubernetesObservedState observedState = mock(KubernetesObservedState.class);
-    private final KubernetesReconciler reconciler = new KubernetesReconciler(informers, applicationRepo, observedState);
+    private final ApplicationStatusEventRecorder eventRecorder = mock(ApplicationStatusEventRecorder.class);
+    private final KubernetesReconciler reconciler = new KubernetesReconciler(informers, applicationRepo, observedState,
+            new ApplicationStatusService(), eventRecorder);
     private final ApplicationKey key = new ApplicationKey("production", "api");
 
     @BeforeEach
@@ -35,6 +43,7 @@ class KubernetesReconcilerTests {
         when(informers.services().getIndexer().list()).thenReturn(List.of());
         when(informers.ingresses().getIndexer().list()).thenReturn(List.of());
         when(informers.events().getIndexer().list()).thenReturn(List.of());
+        when(applicationRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
@@ -102,6 +111,45 @@ class KubernetesReconcilerTests {
 
         verify(applicationRepo, never()).save(any());
         verify(applicationRepo, never()).delete(any());
+    }
+
+    @Test
+    void recordsTheObservedHealthTransition() {
+        var id = UUID.randomUUID();
+        var application = Application.builder().id(id).name(key.name()).namespace(key.namespace()).build();
+        when(applicationRepo.findByNameAndNameSpace(key.name(), key.namespace())).thenReturn(Optional.of(application));
+        var deployment = new V1Deployment().metadata(metadata("production", "api"))
+                .spec(new V1DeploymentSpec().replicas(2)).status(new V1DeploymentStatus().observedGeneration(1L)
+                        .replicas(2).updatedReplicas(2).readyReplicas(1));
+        when(informers.deployments().getIndexer().list()).thenReturn(List.of(deployment));
+
+        assertTrue(reconciler.reconcile(key).isPresent());
+
+        verify(eventRecorder).record(eq(id), argThat(health -> health.status() == ApplicationStatus.DEGRADED));
+    }
+
+    @Test
+    void recordsThatARetainedApplicationIsNoLongerObserved() {
+        var id = UUID.randomUUID();
+        var application = Application.builder().id(id).name(key.name()).namespace(key.namespace()).build();
+        when(applicationRepo.findByNameAndNameSpace(key.name(), key.namespace())).thenReturn(Optional.of(application));
+        when(applicationRepo.hasOperationHistory(id)).thenReturn(true);
+
+        assertTrue(reconciler.reconcile(key).isEmpty());
+
+        verify(eventRecorder).record(eq(id), argThat(health -> health.status() == ApplicationStatus.UNKNOWN));
+    }
+
+    @Test
+    void aDeletedApplicationRecordsNothing() {
+        var application = Application.builder().id(UUID.randomUUID()).name(key.name()).namespace(key.namespace())
+                .build();
+        when(applicationRepo.findByNameAndNameSpace(key.name(), key.namespace())).thenReturn(Optional.of(application));
+
+        assertTrue(reconciler.reconcile(key).isEmpty());
+
+        verify(applicationRepo).delete(application);
+        verifyNoInteractions(eventRecorder);
     }
 
     private V1ObjectMeta metadata(String namespace, String application) {

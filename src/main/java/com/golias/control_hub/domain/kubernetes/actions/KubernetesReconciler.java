@@ -1,5 +1,7 @@
 package com.golias.control_hub.domain.kubernetes.actions;
 
+import com.golias.control_hub.domain.application.action.ApplicationStatusEventRecorder;
+import com.golias.control_hub.domain.application.action.ApplicationStatusService;
 import com.golias.control_hub.domain.application.entities.Application;
 import com.golias.control_hub.domain.application.repository.ApplicationRepo;
 import com.golias.control_hub.domain.kubernetes.dto.ApplicationKey;
@@ -30,12 +32,17 @@ public class KubernetesReconciler {
     private final KubernetesResourceInformers informers;
     private final ApplicationRepo applicationRepo;
     private final KubernetesObservedState observedState;
+    private final ApplicationStatusService statusService;
+    private final ApplicationStatusEventRecorder eventRecorder;
 
     public KubernetesReconciler(KubernetesResourceInformers informers, ApplicationRepo applicationRepo,
-            KubernetesObservedState observedState) {
+            KubernetesObservedState observedState, ApplicationStatusService statusService,
+            ApplicationStatusEventRecorder eventRecorder) {
         this.informers = informers;
         this.applicationRepo = applicationRepo;
         this.observedState = observedState;
+        this.statusService = statusService;
+        this.eventRecorder = eventRecorder;
     }
 
     /** Returns empty when the synced caches contain no resources for this application. */
@@ -64,19 +71,26 @@ public class KubernetesReconciler {
 
         if (deployments.isEmpty() && pods.isEmpty() && services.isEmpty() && ingresses.isEmpty()) {
             observedState.remove(key);
-            applicationRepo.findByNameAndNameSpace(key.name(), key.namespace())
-                    .filter(application -> !applicationRepo.hasOperationHistory(application.getId()))
-                    .ifPresent(applicationRepo::delete);
+            applicationRepo.findByNameAndNameSpace(key.name(), key.namespace()).ifPresent(application -> {
+                // An application kept for its operation history is recorded as no longer observed,
+                // so its last transition is not a stale HEALTHY.
+                if (applicationRepo.hasOperationHistory(application.getId())) {
+                    eventRecorder.record(application.getId(), statusService.evaluate(null));
+                } else {
+                    applicationRepo.delete(application);
+                }
+            });
             return Optional.empty();
         }
 
-        if (applicationRepo.findByNameAndNameSpace(key.name(), key.namespace()).isEmpty()) {
-            applicationRepo.save(Application.builder().name(key.name()).namespace(key.namespace()).build());
-        }
+        Application application = applicationRepo.findByNameAndNameSpace(key.name(), key.namespace())
+                .orElseGet(() -> applicationRepo
+                        .save(Application.builder().name(key.name()).namespace(key.namespace()).build()));
 
         ObservedApplicationState state = new ObservedApplicationState(deployments, pods, services, ingresses, events,
                 Instant.now());
         observedState.put(key, state);
+        eventRecorder.record(application.getId(), statusService.evaluate(state));
 
         return Optional.of(state);
     }
