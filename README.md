@@ -25,7 +25,18 @@ The current observed-state implementation is in-memory. It is behind an interfac
 - `UNHEALTHY`
 - `UNKNOWN`
 
-It also reports explicit reasons such as `POD_CRASH_LOOP`, `REPLICA_NOT_READY`, `IMAGE_PULL_ERROR`, `ROLLOUT_IN_PROGRESS` and `OBSERVED_STATE_UNAVAILABLE`.
+It also reports explicit reasons such as `POD_CRASH_LOOP`, `REPLICA_NOT_READY`, `IMAGE_PULL_ERROR`, `ROLLOUT_IN_PROGRESS`, `PROGRESS_DEADLINE_EXCEEDED`, `REPLICA_FAILURE` and `OBSERVED_STATE_UNAVAILABLE`.
+
+Alongside the status and reasons, health carries the observed spec and signals needed to explain a failure: `desiredReplicas`, `readyReplicas`, `image`, `restartCount`, the Deployment `conditions` and `lastObservedAt` — the reconciler's observation time, not the time of the request.
+
+`image` is read from the container named after the Deployment, falling back to its first container. `DEPLOY` patches the container by the same rule, so both agree on which image belongs to the application.
+
+## Applications API
+
+- `GET /v1/applications` — every registered application with its observed state.
+- `GET /v1/applications/{id}` — a single application, or `404` when it is not registered.
+
+An application whose Kubernetes state cannot be read is returned with `UNKNOWN` health and an `OBSERVED_STATE_UNAVAILABLE` reason rather than being omitted.
 
 ## Operations API
 

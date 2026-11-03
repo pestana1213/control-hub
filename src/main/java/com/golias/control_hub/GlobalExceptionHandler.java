@@ -1,6 +1,7 @@
 package com.golias.control_hub;
 
 import com.golias.control_hub.domain.application.exceptions.ApplicationException;
+import com.golias.control_hub.domain.application.exceptions.ApplicationNotFoundException;
 import com.golias.control_hub.domain.kubernetes.exceptions.KubernetesException;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -34,6 +35,14 @@ public class GlobalExceptionHandler {
         problem.setTitle("Kubernetes unavailable");
         problem.setDetail(exception.getMessage());
 
+        return problem;
+    }
+
+    @ExceptionHandler(ApplicationNotFoundException.class)
+    public ProblemDetail handleApplicationNotFound(ApplicationNotFoundException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+        problem.setTitle("Application not found");
+        problem.setDetail(exception.getMessage());
         return problem;
     }
 

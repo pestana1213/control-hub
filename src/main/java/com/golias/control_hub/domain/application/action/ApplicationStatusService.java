@@ -3,6 +3,7 @@ package com.golias.control_hub.domain.application.action;
 import com.golias.control_hub.domain.application.dto.*;
 import com.golias.control_hub.domain.application.enums.ApplicationStatus;
 import com.golias.control_hub.domain.application.enums.PodStatus;
+import com.golias.control_hub.domain.application.utils.ObservedSpecs;
 import com.golias.control_hub.domain.kubernetes.dto.ObservedApplicationState;
 import io.kubernetes.client.openapi.models.*;
 import org.springframework.stereotype.Service;
@@ -22,8 +23,9 @@ public class ApplicationStatusService {
         if (state == null || state.deployment() == null || state.deployment().isEmpty()) {
             return new ApplicationHealth(ApplicationStatus.UNKNOWN, List
                     .of(new StatusReason(OBSERVED_STATE_UNAVAILABLE, "application", "No deployment state available")),
-                    0, 0);
+                    0, 0, null, 0, List.of(), state == null ? null : state.updatedAt());
         }
+        List<HealthCondition> conditions = new ArrayList<>();
         int desired = 0;
         int ready = 0;
         boolean incomplete = false;
@@ -56,12 +58,15 @@ public class ApplicationStatusService {
                 reasons.add(new StatusReason(ROLLOUT_IN_PROGRESS, resource,
                         "Deployment has not converged to its desired revision"));
             }
+            collectConditions(status.getConditions(), resource, conditions, reasons);
         }
+        int restarts = 0;
         if (state.pods() != null) {
             for (var pod : state.pods()) {
                 if (pod == null || pod.getStatus() == null || isDeleting(pod)) {
                     continue;
                 }
+                restarts += containers(pod.getStatus()).mapToInt(container -> count(container.getRestartCount())).sum();
                 containers(pod.getStatus()).forEach(container -> {
                     var waiting = container.getState() == null ? null : container.getState().getWaiting();
                     String reason = waiting == null ? null : waiting.getReason();
@@ -77,7 +82,8 @@ public class ApplicationStatusService {
             }
         }
         boolean failure = reasons.stream()
-                .anyMatch(reason -> reason.code() == POD_CRASH_LOOP || reason.code() == IMAGE_PULL_ERROR);
+                .anyMatch(reason -> reason.code() == POD_CRASH_LOOP || reason.code() == IMAGE_PULL_ERROR
+                        || reason.code() == PROGRESS_DEADLINE_EXCEEDED || reason.code() == REPLICA_FAILURE);
         ApplicationStatus result;
         if (incomplete) {
             result = ApplicationStatus.UNKNOWN;
@@ -88,7 +94,9 @@ public class ApplicationStatusService {
         } else {
             result = ApplicationStatus.HEALTHY;
         }
-        return new ApplicationHealth(result, List.copyOf(reasons), desired, ready);
+        return new ApplicationHealth(result, List.copyOf(reasons), desired, ready,
+                ObservedSpecs.image(ObservedSpecs.primary(state.deployment())), restarts, List.copyOf(conditions),
+                state.updatedAt());
     }
 
     public PodStatus evaluatePod(V1Pod pod) {
@@ -106,6 +114,29 @@ public class ApplicationStatusService {
                 .map(condition -> "True".equals(condition.getStatus()) ? PodStatus.HEALTHY
                         : "False".equals(condition.getStatus()) ? PodStatus.UNHEALTHY : PodStatus.UNKNOWN)
                 .orElse(PodStatus.UNKNOWN);
+    }
+
+    private void collectConditions(List<V1DeploymentCondition> observed, String resource,
+            List<HealthCondition> conditions, List<StatusReason> reasons) {
+        if (observed == null) {
+            return;
+        }
+        for (var condition : observed) {
+            if (condition == null) {
+                continue;
+            }
+            conditions.add(new HealthCondition(resource, condition.getType(), condition.getStatus(),
+                    condition.getReason(), condition.getMessage(), condition.getLastTransitionTime()));
+            String message = condition.getMessage() == null ? condition.getReason() : condition.getMessage();
+            if ("ReplicaFailure".equals(condition.getType()) && "True".equals(condition.getStatus())) {
+                reasons.add(new StatusReason(REPLICA_FAILURE, resource,
+                        message == null ? "Deployment could not create replicas" : message));
+            } else if ("Progressing".equals(condition.getType()) && "False".equals(condition.getStatus())
+                    && "ProgressDeadlineExceeded".equals(condition.getReason())) {
+                reasons.add(new StatusReason(PROGRESS_DEADLINE_EXCEEDED, resource,
+                        message == null ? "Rollout exceeded its progress deadline" : message));
+            }
+        }
     }
 
     private Stream<V1ContainerStatus> containers(V1PodStatus status) {

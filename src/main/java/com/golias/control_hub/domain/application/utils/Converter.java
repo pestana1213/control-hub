@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 @Component
 @Slf4j
@@ -25,8 +26,9 @@ public class Converter implements Converters {
     }
 
     public ApplicationDTO convert(Application application) {
-        return ApplicationDTO.builder().name(application.getName()).namespace(application.getNamespace())
-                .description(application.getDescription()).repositoryUrl(application.getRepositoryUrl()).build();
+        return ApplicationDTO.builder().id(application.getId()).name(application.getName())
+                .namespace(application.getNamespace()).description(application.getDescription())
+                .repositoryUrl(application.getRepositoryUrl()).build();
     }
 
     public PodDTO toPodDTO(V1Pod pod) {
@@ -35,14 +37,14 @@ public class Converter implements Converters {
         V1PodStatus podStatus = pod.getStatus();
         String phase = podStatus != null && podStatus.getPhase() != null ? podStatus.getPhase() : "Unknown";
 
-        List<V1ContainerStatus> containerStatuses = podStatus != null ? podStatus.getContainerStatuses() : null;
-
-        int restarts = 0;
         PodStatus status = statusService.evaluatePod(pod);
-        if (containerStatuses != null && !containerStatuses.isEmpty()) {
-            restarts = containerStatuses.stream().filter(Objects::nonNull).map(V1ContainerStatus::getRestartCount).mapToInt(Integer::intValue).sum();
 
-        }
+        // Init containers are counted too, so this matches ApplicationHealth.restartCount.
+        int restarts = podStatus == null ? 0
+                : Stream.concat(containerStatuses(podStatus.getInitContainerStatuses()),
+                        containerStatuses(podStatus.getContainerStatuses()))
+                        .mapToInt(container -> container.getRestartCount() == null ? 0 : container.getRestartCount())
+                        .sum();
 
         return new PodDTO(name, status, phase, restarts);
     }
@@ -66,6 +68,10 @@ public class Converter implements Converters {
         return new EventDTO(event.getType(), event.getReason(), event.getMessage(), event.getCount(),
                 event.getFirstTimestamp(), event.getLastTimestamp(), involvedObject.getKind(), involvedObject.getName(),
                 getSourceComponent(event), getSourceHost(event));
+    }
+
+    private Stream<V1ContainerStatus> containerStatuses(List<V1ContainerStatus> statuses) {
+        return statuses == null ? Stream.empty() : statuses.stream().filter(Objects::nonNull);
     }
 
     private String getSourceComponent(CoreV1Event event) {
